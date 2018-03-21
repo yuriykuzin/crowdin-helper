@@ -1,0 +1,25 @@
+{
+  "name": "crowdin-helper",
+  "version": "0.0.1",
+  "description": "Unofficial addition to Crowdin CLI to automate continuous integration workflow",
+  "bin": {
+    "crowdin-helper": "./crowdin-helper.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuriykuzin/crowdin-helper.git"
+  },
+  "keywords": [
+    "crowdin",
+    "cli"
+  ],
+  "author": "Yuriy Kuzin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yuriykuzin/crowdin-helper/issues"
+  },
+  "homepage": "https://github.com/yuriykuzin/crowdin-helper#readme"
+}
