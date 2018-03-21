@@ -8,17 +8,17 @@ This is an initial version, which we experiment with to use in our team's workfl
 
 ## Installation from npm
 
-npm install crowdin-helper
+`npm install crowdin-helper`
 
 ## Installation from GitHub
 
-npm install git+https://git@github.com/yuriykuzin/crowdin-helper
+`npm install git+https://git@github.com/yuriykuzin/crowdin-helper`
 
 ## Post-installation
 
 1. You will also need official Crowdin CLI client. Please install if you don't have it: https://support.crowdin.com/cli-tool
 
-2. If you don't have crowdin.yaml in your project yet, please generate it: crowdin generate
+2. If you don't have crowdin.yaml in your project yet, please generate it: `crowdin generate`
 
 ## Usage
 
