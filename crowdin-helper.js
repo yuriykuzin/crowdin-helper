@@ -18,7 +18,7 @@ const fs = require('fs');
 const _COLOR_GREEN = '\x1b[32m';
 const _COLOR_RED = '\x1b[31m';
 
-const crowdinYml = fs.readFileSync('../../crowdin.yml', 'utf8');
+const crowdinYml = fs.readFileSync('crowdin.yml', 'utf8');
 
 const config = {
   projectIdentifier: crowdinYml.match(/"project_identifier".+?"([^"]+)"/)[1],
