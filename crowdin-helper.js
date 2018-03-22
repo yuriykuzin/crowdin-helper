@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-//   node crowdin-helper [command]
+//   ./node_modules/crowdin-helper/crowdin-helper [command]
+
+//   OR inside "scripts" section in package.json: crowdin-helper [command]
 
 //   COMMANDS
 //   up          - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
@@ -157,7 +159,9 @@ if (process.argv[2] === 'pre-push') {
 console.log(`
   Crowdin Helper
 
-  node crowdin-helper [command]
+  ./node_modules/crowdin-helper/crowdin-helper [command]
+
+  OR inside "scripts" section in package.json: crowdin-helper [command]
 
   COMMANDS
   up          - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
