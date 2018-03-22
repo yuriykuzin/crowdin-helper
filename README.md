@@ -4,7 +4,7 @@ Unofficial addition to Crowdin CLI to automate continuous integration workflow.
 
 This is an initial, prototype version, which we experiment with to use in our team's workflow. For now some things are harcoded inside, accordingly to our own needs. You're welcome to use it as a source of inspiration, fork it and modify code to make it usable in your projects. We would appreciate any kind of feedback, suggestions, pull requests.
 
-### Disclaimer:
+#### Disclaimer:
 Crowdin and the Crowdin API are the property of Crowdin, LLC.
 
 
@@ -22,81 +22,81 @@ Crowdin and the Crowdin API are the property of Crowdin, LLC.
 
 1. Make sure that you have official Crowdin CLI client installed and configured properly. That means you can run `crowdin`, also you have crowdin.yaml in the root of your project, which contains at least project_identifier, api_key and source file name.
 
-More details on setting up Crowdin CLI are here: https://support.crowdin.com/cli-tool
+  More details on setting up Crowdin CLI are here: https://support.crowdin.com/cli-tool
 
 2. Add crowdin-helper.json to the root of your project. Here is an example:
 
-```
-{
-  "languageToCheck": "nl",
-  "daysSinceLastUpdatedToDeleteBranchSafely": 3,
-  "minutesSinceLastMasterMergeToPurgeSafely": 20
-}
-```
+  ```
+  {
+    "languageToCheck": "nl",
+    "daysSinceLastUpdatedToDeleteBranchSafely": 3,
+    "minutesSinceLastMasterMergeToPurgeSafely": 20
+  }
+  ```
 
 3. In our project we add these shorcuts to "scripts" section in package.json:
 
-```
-{
-  ...
-  "scripts": {
+  ```
+  {
     ...
-    "crowdin-progress": "crowdin-helper progress",
-    "crowdin-up": "crowdin-helper up",
-    "crowdin-down": "crowdin-helper down"
-  },
-  ...
-}
-```
+    "scripts": {
+      ...
+      "crowdin-progress": "crowdin-helper progress",
+      "crowdin-up": "crowdin-helper up",
+      "crowdin-down": "crowdin-helper down"
+    },
+    ...
+  }
+  ```
 
 4. We use pre-push git hook that upload translation sources to crowdin before pushing files to the github branch. You can create in the root file named `pre-push.sh` that contains:
 
-```
-#!/bin/bash
+  ```
+  #!/bin/bash
 
-echo "Checking if en.json changed...";
+  echo "Checking if en.json changed...";
 
-node ./node_modules/crowdin-helper/crowdin-helper pre-push
-```
+  node ./node_modules/crowdin-helper/crowdin-helper pre-push
+  ```
 
 5. To set it up automatically on each `npm install`, you can create file `setup-hooks.sh`:
 
-```
-#!/bin/bash
+  ```
+  #!/bin/bash
 
-echo "Installing git hooks..."
+  echo "Installing git hooks..."
 
-if [[ -d .git ]]; then
-  [[ -L .git/hooks/pre-push ]] && rm .git/hooks/pre-push;
-  ln -s ../../pre-push.sh .git/hooks/pre-push;
-  echo -e "Successfully installed!"
-else
-  echo -e "No .git directory, probably we're under node_modules"
-fi;
-```
+  if [[ -d .git ]]; then
+    [[ -L .git/hooks/pre-push ]] && rm .git/hooks/pre-push;
+    ln -s ../../pre-push.sh .git/hooks/pre-push;
+    echo -e "Successfully installed!"
+  else
+    echo -e "No .git directory, probably we're under node_modules"
+  fi;
+  ```
 
-and add to "scripts" in package.json this line:
+  and add to "scripts" in package.json this line:
 
-`"postinstall": "bash ./setup-hooks.sh",`
+  `"postinstall": "bash ./setup-hooks.sh",`
 
 6. We're using https://semaphoreci.com for building and deploying our github branches. If you do it as well, you can add a job to build settings (https://semaphoreci.com/%your_account_name%/%your_project_name%/settings):
 
-`npm run crowdin-progress`
+  `npm run crowdin-progress`
 
-If you do so, you will be able to merge branch only if relevant translations on crowdin are ready.
+  If you do so, you will be able to merge branch only if relevant translations on crowdin are ready.
 
 
 ## Usage
 
 Here we describe our current process.
 
-The context:
+####The context:
 
 - In our git branch convention we name branches like `story/team-1234/develop-new-feature` (we use '/' symbol and never use double minus '--' in a branch name. Crowdin doesn't allow use '/' in a branch name, so we replacing '/' with '--' when generation crowdin branch name)
 
 - Currently we consider translation to only one language as critical ('NL'). That means we don't want merge into master some branch which contains some missing translations since we deploying master branch to production automatically
 
-The flow:
+####The flow:
 
 1. When a developer working on a feature, changes translation source file (en.json in our case) and then calls `git push`, pre-push hook will be invoked and translation source will be autimatically uploaded to crowdin (a proper crowdin branch will be created).
 
