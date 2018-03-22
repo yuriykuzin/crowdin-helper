@@ -90,13 +90,13 @@ Crowdin and the Crowdin API are the property of Crowdin, LLC.
 
 Here we describe our current process.
 
-####The context:
+#### The context:
 
 - In our git branch convention we name branches like `story/team-1234/develop-new-feature` (we use '/' symbol and never use double minus '--' in a branch name. Crowdin doesn't allow use '/' in a branch name, so we replacing '/' with '--' when generation crowdin branch name)
 
 - Currently we consider translation to only one language as critical ('NL'). That means we don't want merge into master some branch which contains some missing translations since we deploying master branch to production automatically
 
-####The flow:
+#### The flow:
 
 1. When a developer working on a feature, changes translation source file (en.json in our case) and then calls `git push`, pre-push hook will be invoked and translation source will be autimatically uploaded to crowdin (a proper crowdin branch will be created).
 
