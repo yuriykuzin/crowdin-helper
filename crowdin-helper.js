@@ -11,132 +11,164 @@
 
 
 const fetch = require('node-fetch');
-const getGitBranch = require('git-branch');
 const spawn = require('child_process').spawnSync;
 const fs = require('fs');
 
 const _COLOR_GREEN = '\x1b[32m';
 const _COLOR_RED = '\x1b[31m';
+const _COLOR_WHITE = '\x1b[37m';
+
+
+// Reading config files:
+//
+// 1 - crowdin CLI config (crowdin.yml)
+
+if (!fs.existsSync('crowdin.yml')) {
+  console.log(`Crowdin: ${_COLOR_RED}Error: crowdin.yml is missing`);
+  console.log(`${_COLOR_WHITE}Crowdin: Please generate config file using crowdin CLI and fill project_identifier, api_key, source file name`);
+
+  process.exit(1);
+}
 
 const crowdinYml = fs.readFileSync('crowdin.yml', 'utf8');
+
+// 2 - crowdin-helper.json config
+
+let crowdinHelperJson = {};
+
+if (fs.existsSync('crowdin-helper.json')) {
+  try {
+    crowdinHelperJson = JSON.parse(fs.readFileSync('crowdin-helper.json', 'utf8'));
+  } catch (err) {
+    console.log(`Crowdin: ${_COLOR_RED}Error: crowdin-helper.json is invalid`);
+    console.log(`${_COLOR_WHITE}Crowdin: Please fix or remove it`);
+
+    process.exit(1);
+  }
+}
 
 const config = {
   projectIdentifier: crowdinYml.match(/"project_identifier".+?"([^"]+)"/)[1],
   projectKey: crowdinYml.match(/"api_key".+?"([^"]+)"/)[1],
   sourceFile: crowdinYml.match(/"source".+?"([^"]+)"/)[1],
-  languageToCheck: 'nl',
-  daysSinceLastUpdatedToDeleteBranchSafely: 3,
-  minutesSinceLastMasterMergeToPurgeSafely: 20,
+  languageToCheck: crowdinHelperJson.languageToCheck || 'nl',
+  daysSinceLastUpdatedToDeleteBranchSafely: crowdinHelperJson.daysSinceLastUpdatedToDeleteBranchSafely || 3,
+  minutesSinceLastMasterMergeToPurgeSafely: crowdinHelperJson.minutesSinceLastMasterMergeToPurgeSafely || 20,
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-getGitBranch(function(err, gitBranchName) {
-  if (err) {
-    throw err;
+if (process.argv[2] === 'purge') {
+  const minutesFromLastMasterMerge = getDateDiffInMinutes(getLastCommitToMasterDate(), new Date());
+
+  if (minutesFromLastMasterMerge < config.minutesSinceLastMasterMergeToPurgeSafely) {
+    console.log('Last merge to master was performed less than '
+      + config.minutesSinceLastMasterMergeToPurgeSafely
+      + ' minutes ago. It is not safe to purge crowdin branches now');
+
+    console.log(`${_COLOR_GREEN}Please retry later`);
+
+    process.exit(1);
   }
 
-  const branchName = gitBranchName.replace(/\//g, '--');
+  fetch(
+    `https://api.crowdin.com/api/project/${ config.projectIdentifier }/info?`
+      + `key=${ config.projectKey }&json`,
+    { method: 'POST' }
+  )
+    .then(res => res.json())
+    .then(json => {
+      const crowdinBranches = json.files.filter(file => file.node_type === 'branch');
+      const gitBranchesConverted = getGitRemoteBranches().map(gitBranch => gitBranch.replace(/\//g, '--'));
+      let isSomeBranchesDeleted = false;
 
-  if (process.argv[2] === 'up') {
-    uploadSources(branchName);
+      crowdinBranches.forEach((branch) => {
+        const daysSinceLastBranchUpdate = getDateDiffInDays(
+          new Date(getFileLastUpdated(branch)),
+          new Date()
+        );
 
-    return;
-  }
+        if (
+              gitBranchesConverted.indexOf(branch.name) === -1
+          && daysSinceLastBranchUpdate > config.daysSinceLastUpdatedToDeleteBranchSafely
+        ) {
+          isSomeBranchesDeleted = true;
 
-  if (process.argv[2] === 'down') {
-    console.log('Crowdin: Downloading branch:', branchName);
-
-    spawn('crowdin', [ 'download', '-b', branchName ], { stdio: 'inherit' });
-
-    return;
-  }
-
-  if (process.argv[2] === 'progress') {
-    checkProgressOnBranch(branchName);
-
-    return;
-  }
-
-  if (process.argv[2] === 'pre-push') {
-    if (isSourceFileDiffersFromMaster()) {
-      uploadSources(branchName);
-    }
-
-    return;
-  }
-
-  if (process.argv[2] === 'purge') {
-    const minutesFromLastMasterMerge = getDateDiffInMinutes(getLastCommitToMasterDate(), new Date());
-
-    if (minutesFromLastMasterMerge < config.minutesSinceLastMasterMergeToPurgeSafely) {
-      console.log('Last merge to master was performed less than '
-        + config.minutesSinceLastMasterMergeToPurgeSafely
-        + ' minutes ago. It is not safe to purge crowdin branches now');
-
-      console.log(`${_COLOR_GREEN}Please retry later`);
-
-      process.exit(1);
-    }
-
-    fetch(
-      `https://api.crowdin.com/api/project/${ config.projectIdentifier }/info?`
-        + `key=${ config.projectKey }&json`,
-      { method: 'POST' }
-    )
-      .then(res => res.json())
-      .then(json => {
-        const crowdinBranches = json.files.filter(file => file.node_type === 'branch');
-        const gitBranchesConverted = getGitRemoteBranches().map(gitBranch => gitBranch.replace(/\//g, '--'));
-        let isSomeBranchesDeleted = false;
-
-        crowdinBranches.forEach((branch) => {
-          const daysSinceLastBranchUpdate = getDateDiffInDays(
-            new Date(getFileLastUpdated(branch)),
-            new Date()
-          );
-
-          if (
-               gitBranchesConverted.indexOf(branch.name) === -1
-            && daysSinceLastBranchUpdate > config.daysSinceLastUpdatedToDeleteBranchSafely
-          ) {
-            isSomeBranchesDeleted = true;
-
-            fetch(
-              `https://api.crowdin.com/api/project/${ config.projectIdentifier }/delete-directory?`
-                + `key=${ config.projectKey }&name=${ branch.name }`,
-              { method: 'POST' }
-            )
-              .then((res) => {
-                console.log(`Branch "${ branch.name }" is removed from crowdin`);
-              })
-              .catch(e => {
-                console.log(`Failed to remove branch ${ branch.name } from crowdin`, e);
-              });
-          }
-        });
-
-        if (!isSomeBranchesDeleted) {
-          console.log('All branches are actual. Nothing to delete');
+          fetch(
+            `https://api.crowdin.com/api/project/${ config.projectIdentifier }/delete-directory?`
+              + `key=${ config.projectKey }&name=${ branch.name }`,
+            { method: 'POST' }
+          )
+            .then((res) => {
+              console.log(`Branch "${ branch.name }" is removed from crowdin`);
+            })
+            .catch(e => {
+              console.log(`Failed to remove branch ${ branch.name } from crowdin`, e);
+            });
         }
       });
 
-    return;
+      if (!isSomeBranchesDeleted) {
+        console.log('All branches are actual. Nothing to delete');
+      }
+    });
+
+  return;
+}
+
+const gitBranchName = spawn('git', [ 'rev-parse', '--abbrev-ref', 'HEAD' ])
+  .stdout
+  .toString()
+  .match(/.+/)
+  [0];
+
+console.log(`Crowdin: Working on git branch: ${ gitBranchName }`);
+
+const branchName = gitBranchName.replace(/\//g, '--');
+
+if (process.argv[2] === 'up') {
+  uploadSources(branchName);
+
+  return;
+}
+
+if (process.argv[2] === 'down') {
+  console.log('Crowdin: Downloading branch:', branchName);
+
+  spawn('crowdin', [ 'download', '-b', branchName ], { stdio: 'inherit' });
+
+  return;
+}
+
+if (process.argv[2] === 'progress') {
+  checkProgressOnBranch(branchName);
+
+  return;
+}
+
+if (process.argv[2] === 'pre-push') {
+  if (isSourceFileDiffersFromMaster()) {
+    uploadSources(branchName);
   }
 
-  console.log(`
-    Crowdin Helper
+  return;
+}
 
-    node crowdin-helper [command]
+console.log(`
+  Crowdin Helper
 
-    COMMANDS
-    up          - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
-    down        - Downloads translations from the current branch in crowdin (evaluated from GIT branch)
-    progress    - Shows progress status on current branch. Exit with error if incomplete
-    pre-push    - Checks if source file differs from master and if yes, uploads source file to crowdin
-    purge       - Delete all unused branches from crowdin (each branch without relevant GIT branch)
-  `);
-});
+  node crowdin-helper [command]
 
+  COMMANDS
+  up          - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
+  down        - Downloads translations from the current branch in crowdin (evaluated from GIT branch)
+  progress    - Shows progress status on current branch. Exit with error if incomplete
+  pre-push    - Checks if source file differs from master and if yes, uploads source file to crowdin
+  purge       - Delete all unused branches from crowdin (each branch without relevant GIT branch)
+`);
+
+
+// Functions:
 
 function checkProgressOnBranch(branchName) {
   console.log('Crowdin: Checking language:', config.languageToCheck);

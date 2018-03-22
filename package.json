@@ -1,6 +1,6 @@
 {
   "name": "crowdin-helper",
-  "version": "0.0.5-beta",
+  "version": "0.0.6",
   "description": "Unofficial addition to Crowdin CLI to automate continuous integration workflow",
   "bin": {
     "crowdin-helper": "./crowdin-helper.js"
@@ -23,7 +23,6 @@
   },
   "homepage": "https://github.com/yuriykuzin/crowdin-helper#readme",
   "dependencies": {
-    "git-branch": "2.0.1",
     "node-fetch": "2.1.1"
   }
 }

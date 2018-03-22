@@ -2,9 +2,10 @@
 
 Unofficial addition to Crowdin CLI to automate continuous integration workflow.
 
-Crowdin and the Crowdin API are the property of Crowdin, LLC.
+This is an initial, prototype version, which we experiment with to use in our team's workflow. For now some things are harcoded inside, accordingly to our own needs. You're welcome to use it as a source of inspiration, fork it and modify code to make it usable in your projects. We would appreciate any kind of feedback, suggestions, pull requests.
 
-This is an initial version, which we experiment with to use in our team's workflow. We would appreciate any kind of feedback, suggestions, pull requests.
+### Disclaimer:
+Crowdin and the Crowdin API are the property of Crowdin, LLC.
 
 ## Installation from npm
 
@@ -20,6 +21,8 @@ This is an initial version, which we experiment with to use in our team's workfl
 
 2. If you don't have crowdin.yaml in your project yet, please generate it: `crowdin generate`
 
+3. ...under construction...
+
 ## Usage
 
 Under construction... Please check it soon.
@@ -34,6 +37,6 @@ Under construction... Please check it soon.
 
 ## License and Author
 
-Author: Yuriy Kuzin (yuriy.open@gmail.com)
+Author: Yuriy Kuzin
 
 This project is licensed under the MIT license, a copy of which can be found in the LICENSE file.
