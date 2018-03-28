@@ -20,70 +20,76 @@ Crowdin and the Crowdin API are the property of Crowdin, LLC.
 
 ## Post-installation recommended steps
 
-1. Make sure that you have official Crowdin CLI client installed and configured properly. That means you can run `crowdin`, also you have crowdin.yaml in the root of your project, which contains at least project_identifier, api_key and source file name.
+##### Step 1
+Make sure that you have official Crowdin CLI client installed and configured properly. That means you can run `crowdin`, also you have crowdin.yaml in the root of your project, which contains at least project_identifier, api_key and source file name.
 
-  More details on setting up Crowdin CLI are here: https://support.crowdin.com/cli-tool
+More details on setting up Crowdin CLI are here: https://support.crowdin.com/cli-tool
 
-2. Add crowdin-helper.json to the root of your project. Here is an example:
+##### Step 2
+Add crowdin-helper.json to the root of your project. Here is an example:
 
-  ```
-  {
-    "languageToCheck": "nl",
-    "daysSinceLastUpdatedToDeleteBranchSafely": 3,
-    "minutesSinceLastMasterMergeToPurgeSafely": 20
-  }
-  ```
+```
+{
+  "languageToCheck": "nl",
+  "daysSinceLastUpdatedToDeleteBranchSafely": 3,
+  "minutesSinceLastMasterMergeToPurgeSafely": 20
+}
+```
 
-3. In our project we add these shorcuts to "scripts" section in package.json:
+##### Step 3
+In our project we add these shorcuts to "scripts" section in package.json:
 
-  ```
-  {
+```
+{
+  ...
+  "scripts": {
     ...
-    "scripts": {
-      ...
-      "crowdin-progress": "crowdin-helper progress",
-      "crowdin-up": "crowdin-helper up",
-      "crowdin-down": "crowdin-helper down"
-    },
-    ...
-  }
-  ```
+    "crowdin-progress": "crowdin-helper progress",
+    "crowdin-up": "crowdin-helper up",
+    "crowdin-down": "crowdin-helper down"
+  },
+  ...
+}
+```
 
-4. We use pre-push git hook that upload translation sources to crowdin before pushing files to the github branch. You can create in the root file named `pre-push.sh` that contains:
+##### Step 4
+We use pre-push git hook that upload translation sources to crowdin before pushing files to the github branch. You can create in the root file named `pre-push.sh` that contains:
 
-  ```
-  #!/bin/bash
+```
+#!/bin/bash
 
-  echo "Checking if en.json changed...";
+echo "Checking if en.json changed...";
 
-  node ./node_modules/crowdin-helper/crowdin-helper pre-push
-  ```
+node ./node_modules/crowdin-helper/crowdin-helper pre-push
+```
 
-5. To set it up automatically on each `npm install`, you can create file `setup-hooks.sh`:
+##### Step 5
+To set it up automatically on each `npm install`, you can create file `setup-hooks.sh`:
 
-  ```
-  #!/bin/bash
+```
+#!/bin/bash
 
-  echo "Installing git hooks..."
+echo "Installing git hooks..."
 
-  if [[ -d .git ]]; then
-    [[ -L .git/hooks/pre-push ]] && rm .git/hooks/pre-push;
-    ln -s ../../pre-push.sh .git/hooks/pre-push;
-    echo -e "Successfully installed!"
-  else
-    echo -e "No .git directory, probably we're under node_modules"
-  fi;
-  ```
+if [[ -d .git ]]; then
+  [[ -L .git/hooks/pre-push ]] && rm .git/hooks/pre-push;
+  ln -s ../../pre-push.sh .git/hooks/pre-push;
+  echo -e "Successfully installed!"
+else
+  echo -e "No .git directory, probably we're under node_modules"
+fi;
+```
 
-  and add to "scripts" in package.json this line:
+and add to "scripts" in package.json this line:
 
-  `"postinstall": "bash ./setup-hooks.sh",`
+`"postinstall": "bash ./setup-hooks.sh",`
 
-6. We're using https://semaphoreci.com for building and deploying our github branches. If you do it as well, you can add a job to build settings (https://semaphoreci.com/%your_account_name%/%your_project_name%/settings):
+##### Step 6
+We're using https://semaphoreci.com for building and deploying our github branches. If you do it as well, you can add a job to build settings (https://semaphoreci.com/%your_account_name%/%your_project_name%/settings):
 
-  `npm run crowdin-progress`
+`npm run crowdin-progress`
 
-  If you do so, you will be able to merge branch only if relevant translations on crowdin are ready.
+If you do so, you will be able to merge branch only if relevant translations on crowdin are ready.
 
 
 ## Usage
@@ -104,10 +110,12 @@ Here we describe our current process.
 
 3. When semaphore shows green-light (translation progress is 100%), a developer calls `npm run crowdin-down` to download translations, then commit and push them adding to existing pull request. Then pull request can be merged to master branch and deployed.
 
+**Please note:** before downloading crowdin branch (as described in step 3) crowdin-helper will check if you have the last commit from the source file (e.g. `src/i18n/en.json`) from the master in your current branch. If not, you'll be asked to merge master branch into your own, then perform uploading sources to crowdin (as described in the step 1 or call `./node_modules/crowdin-helper/crowdin-helper.js up` and then try to download translations again). If you want to skip this check, you can simply call `./node_modules/crowdin-helper/crowdin-helper.js down --force`
+
 
 ## Removing unnecessary crowdin branches:
 
-From time to time one of team leads calls `node ./node_modules/crowdin-helper/crowdin-helper purge` that removes branches which meet following criterias:
+From time to time one of team leads calls `./node_modules/crowdin-helper/crowdin-helper.js purge` that removes branches which meet following criterias:
 
 - crowdin branch do not have relevant branch on github (in our process we delete a branch on github after merging PR into master),
 

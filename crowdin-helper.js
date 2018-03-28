@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
-//   ./node_modules/crowdin-helper/crowdin-helper [command]
-
-//   OR inside "scripts" section in package.json: crowdin-helper [command]
+//   node crowdin-helper [command]
 
 //   COMMANDS
-//   up          - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
-//   down        - Downloads translations from the current branch in crowdin (evaluated from GIT branch)
-//   progress    - Shows progress status on current branch. Exit with error if incomplete
-//   pre-push    - Checks if source file differs from master and if yes, uploads source file to crowdin
-//   purge       - Delete all unused branches from crowdin (each branch without relevant GIT branch)
+//   up            - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
+//   down          - Downloads translations from the current branch in crowdin (evaluated from GIT branch)
+//                  (it will fail if the last commit in source file from the master is not merged to the current branch)
+//   down --force  - Same as previous, but without master merge checking (less safe, not recommended)
+//   progress      - Shows progress status on current branch. Exit with error if incomplete
+//   pre-push      - Checks if source file differs from master and if yes, uploads source file to crowdin
+//   purge         - Delete all unused branches from crowdin (each branch without relevant GIT branch)
 
 
 const fetch = require('node-fetch');
@@ -52,7 +52,7 @@ if (fs.existsSync('crowdin-helper.json')) {
 const config = {
   projectIdentifier: crowdinYml.match(/"project_identifier".+?"([^"]+)"/)[1],
   projectKey: crowdinYml.match(/"api_key".+?"([^"]+)"/)[1],
-  sourceFile: crowdinYml.match(/"source".+?"([^"]+)"/)[1],
+  sourceFile: crowdinYml.match(/"source".+?"\.?\/?([^"]+)"/)[1],
   languageToCheck: crowdinHelperJson.languageToCheck || 'nl',
   daysSinceLastUpdatedToDeleteBranchSafely: crowdinHelperJson.daysSinceLastUpdatedToDeleteBranchSafely || 3,
   minutesSinceLastMasterMergeToPurgeSafely: crowdinHelperJson.minutesSinceLastMasterMergeToPurgeSafely || 20,
@@ -121,36 +121,45 @@ if (process.argv[2] === 'purge') {
 const gitBranchName = spawn('git', [ 'rev-parse', '--abbrev-ref', 'HEAD' ])
   .stdout
   .toString()
-  .match(/.+/)
+  .split('\n')
   [0];
 
 console.log(`Crowdin: Working on git branch: ${ gitBranchName }`);
 
-const branchName = gitBranchName.replace(/\//g, '--');
+const crowdinBranchName = gitBranchName.replace(/\//g, '--');
 
 if (process.argv[2] === 'up') {
-  uploadSources(branchName);
+  uploadSources(crowdinBranchName);
 
   return;
 }
 
 if (process.argv[2] === 'down') {
+  if (process.argv[3] !== '--force' && !isLastSourceFileFromMasterMergedIntoCurrent()) {
+    console.log(`Crowdin: ${_COLOR_RED}Please merge last master into your branch and upload sources to crowdin `
+      + `before attempting to download last translations`);
+
+    process.exit(1);
+  }
+
   console.log('Crowdin: Downloading branch:', branchName);
 
   spawn('crowdin', [ 'download', '-b', branchName ], { stdio: 'inherit' });
+
+  console.log(`Crowdin: ${_COLOR_GREEN}Done!`);
 
   return;
 }
 
 if (process.argv[2] === 'progress') {
-  checkProgressOnBranch(branchName);
+  checkProgressOnBranch(crowdinBranchName);
 
   return;
 }
 
 if (process.argv[2] === 'pre-push') {
   if (isSourceFileDiffersFromMaster()) {
-    uploadSources(branchName);
+    uploadSources(crowdinBranchName);
   }
 
   return;
@@ -159,16 +168,16 @@ if (process.argv[2] === 'pre-push') {
 console.log(`
   Crowdin Helper
 
-  ./node_modules/crowdin-helper/crowdin-helper [command]
-
-  OR inside "scripts" section in package.json: crowdin-helper [command]
+  node crowdin-helper [command]
 
   COMMANDS
-  up          - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
-  down        - Downloads translations from the current branch in crowdin (evaluated from GIT branch)
-  progress    - Shows progress status on current branch. Exit with error if incomplete
-  pre-push    - Checks if source file differs from master and if yes, uploads source file to crowdin
-  purge       - Delete all unused branches from crowdin (each branch without relevant GIT branch)
+  up            - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
+  down          - Downloads translations from the current branch in crowdin (evaluated from GIT branch)
+                  (it will fail if the last commit in source file from the master is not merged to the current branch)
+  down --force  - Same as previous, but without master merge checking (less safe, not recommended)
+  progress      - Shows progress status on current branch. Exit with error if incomplete
+  pre-push      - Checks if source file differs from master and if yes, uploads source file to crowdin
+  purge         - Delete all unused branches from crowdin (each branch without relevant GIT branch)
 `);
 
 
@@ -234,10 +243,9 @@ function getGitRemoteBranches() {
 }
 
 function isSourceFileDiffersFromMaster() {
-  const sourceFileName = config.sourceFile.replace(/^(\.\/|\/)/, '');
   const child = spawn('git', ['diff', 'origin/master', 'HEAD', '--stat', '--name-only']);
 
-  return child.stdout.indexOf(sourceFileName) !== -1;
+  return child.stdout.indexOf(config.sourceFile) !== -1;
 }
 
 function getFileLastUpdated(crowdinBranchObj) {
@@ -266,10 +274,24 @@ function getDateDiffInMinutes(date1, date2) {
 }
 
 function getLastCommitToMasterDate() {
-  // git fetch && git log -1 --format=%cd origin/master
-
   spawn('git', ['fetch']);
   const child = spawn('git', ['log', '-1', '--format=%cd', 'origin/master']);
 
   return new Date(child.stdout.toString());
+}
+
+function isLastSourceFileFromMasterMergedIntoCurrent() {
+  spawn('git', ['fetch']);
+
+  const commitId = spawn('git', ['log', '-1', '--pretty=format:"%H"' , 'origin/master', config.sourceFile])
+    .stdout
+    .toString()
+    .replace(/"/g, '');
+
+  const isCurrentBranchContainsThisCommit = spawn('git', ['branch', '--contains', commitId])
+    .stdout
+    .toString()
+    .indexOf(gitBranchName) !== -1;
+
+  return isCurrentBranchContainsThisCommit;
 }
