@@ -142,9 +142,9 @@ if (process.argv[2] === 'down') {
     process.exit(1);
   }
 
-  console.log('Crowdin: Downloading branch:', branchName);
+  console.log('Crowdin: Downloading branch:', crowdinBranchName);
 
-  spawn('crowdin', [ 'download', '-b', branchName ], { stdio: 'inherit' });
+  spawn('crowdin', [ 'download', '-b', crowdinBranchName ], { stdio: 'inherit' });
 
   console.log(`Crowdin: ${_COLOR_GREEN}Done!`);
 
