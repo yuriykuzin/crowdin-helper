@@ -142,6 +142,10 @@ if (process.argv[2] === 'down') {
     process.exit(1);
   }
 
+  console.log('Crowdin: Uploading sources before downloading');
+
+  uploadSources(crowdinBranchName);
+
   console.log('Crowdin: Downloading branch:', crowdinBranchName);
 
   spawn('crowdin', [ 'download', '-b', crowdinBranchName ], { stdio: 'inherit' });
