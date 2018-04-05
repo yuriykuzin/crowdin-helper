@@ -58,8 +58,6 @@ const config = {
   minutesSinceLastMasterMergeToPurgeSafely: crowdinHelperJson.minutesSinceLastMasterMergeToPurgeSafely || 20,
 };
 
-console.log(config);
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 if (process.argv[2] === 'purge') {
