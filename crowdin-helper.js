@@ -50,13 +50,15 @@ if (fs.existsSync('crowdin-helper.json')) {
 }
 
 const config = {
-  projectIdentifier: crowdinYml.match(/project_identifier"?:\W+?"?(.+)"?/)[1],
-  projectKey: crowdinYml.match(/api_key"?:\W+?"?(.+)"?/)[1],
-  sourceFile: crowdinYml.match(/source"?:\W+?"?(.+)"?/)[1],
+  projectIdentifier: crowdinYml.match(/project_identifier\W+?:\W+?"?([^"]+)/)[1],
+  projectKey: crowdinYml.match(/api_key\W+?:\W+?"?([^"]+)/)[1],
+  sourceFile: crowdinYml.match(/source\W+?:\W+?"?([^"]+)/)[1],
   languageToCheck: crowdinHelperJson.languageToCheck || 'nl',
   daysSinceLastUpdatedToDeleteBranchSafely: crowdinHelperJson.daysSinceLastUpdatedToDeleteBranchSafely || 3,
   minutesSinceLastMasterMergeToPurgeSafely: crowdinHelperJson.minutesSinceLastMasterMergeToPurgeSafely || 20,
 };
+
+console.log(config);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
