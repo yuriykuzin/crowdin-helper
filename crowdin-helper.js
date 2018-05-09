@@ -140,9 +140,6 @@ if (process.argv[2] === 'down') {
     process.exit(1);
   }
 
-  console.log('Crowdin: Uploading sources before downloading');
-  uploadSources(crowdinBranchName);
-
   console.log('Crowdin: Downloading branch:', crowdinBranchName);
   downloadTranslations(crowdinBranchName);
 
@@ -258,6 +255,7 @@ async function uploadSources(branchName) {
       }
 
       const fileNameKey = 'files[' + filePath + ']';
+      const exportPatternsKey = 'export_patterns[' + filePath + ']';
 
       const updateFileMethod = isBranchNewlyCreated
         ? 'add-file'
@@ -265,8 +263,8 @@ async function uploadSources(branchName) {
 
       const response = await callCrowdinApi(updateFileMethod, {
         [fileNameKey]: fs.createReadStream(filePath),
-        branch: branchName,
-        export_patterns: '/src/i18n/%two_letters_code%.json'
+        [exportPatternsKey]: '/src/i18n/%two_letters_code%.json',
+        branch: branchName
       })
         .then(json => {
           if (json.error && json.error.code === 8) {
@@ -274,8 +272,8 @@ async function uploadSources(branchName) {
 
             return callCrowdinApi('add-file', {
               [fileNameKey]: fs.createReadStream(filePath),
-              branch: branchName,
-              export_patterns: '/src/i18n/%two_letters_code%.json'
+              [exportPatternsKey]: '/src/i18n/%two_letters_code%.json',
+              branch: branchName
             });
           }
 
@@ -422,18 +420,17 @@ function triggerAutoTranslation(branchName) {
 }
 
 async function downloadTranslations(branchName) {
+  console.log('Crowdin: Uploading sources before downloading');
+  await uploadSources(branchName);
+
   await callCrowdinApi(`export`, { branch: branchName });
 
   return await callCrowdinApi(`download/all.zip`, { branch: branchName }, false)
     .then(res => {
-      console.dir(res);
-
       res.body.pipe(unzipper.Parse())
         .on('entry', (entry) => {
           if (entry.type === 'File') {
             const fileName = entry.path.replace(branchName, '').replace(/^\//, '');
-
-            console.dir(entry.path);
 
             entry.pipe(fs.createWriteStream(fileName)
               .on('finish', () => {
