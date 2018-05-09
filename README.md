@@ -105,7 +105,7 @@ Here we describe our current process.
 **Please note:** To be on a safe side, translation sources will be uploaded to crowdin automatically if you call translations downloading.
 
 ## Removing unnecessary crowdin branches:
-From time to time one of team leads calls `./node_modules/crowdin-helper/crowdin-helper.js purge` that removes branches which meet following criterias:
+From time to time one of team leads calls `./node_modules/.bin/crowdin-helper purge` that removes branches which meet following criterias:
 
 - crowdin branch do not have relevant branch on github (in our process we delete a branch on github after merging PR into master),
 
