@@ -17,8 +17,9 @@
 const fetch = require('node-fetch');
 const spawn = require('child_process').spawnSync;
 const fs = require('fs');
-
-const { URLSearchParams } = require('url');
+const unzipper = require('unzipper');
+const glob = require('glob');
+const FormData = require('form-data');
 
 const _COLOR_GREEN = '\x1b[32m';
 const _COLOR_RED = '\x1b[31m';
@@ -30,8 +31,8 @@ const _COLOR_WHITE = '\x1b[37m';
 // 1 - crowdin CLI config (crowdin.yml)
 
 if (!fs.existsSync('crowdin.yml')) {
-  console.log(`Crowdin: ${_COLOR_RED}Error: crowdin.yml is missing`);
-  console.log(`${_COLOR_WHITE}Crowdin: Please generate config file using crowdin CLI and fill project_identifier, api_key, source file name`);
+  console.log(`Crowdin: ${_COLOR_RED}Error: crowdin.yml is missing${_COLOR_WHITE}`);
+  console.log('Crowdin: Please generate config file using crowdin CLI and fill project_identifier, api_key, source file name');
 
   process.exit(1);
 }
@@ -46,8 +47,8 @@ if (fs.existsSync('crowdin-helper.json')) {
   try {
     crowdinHelperJson = JSON.parse(fs.readFileSync('crowdin-helper.json', 'utf8'));
   } catch (err) {
-    console.log(`Crowdin: ${_COLOR_RED}Error: crowdin-helper.json is invalid`);
-    console.log(`${_COLOR_WHITE}Crowdin: Please fix or remove it`);
+    console.log(`Crowdin: ${_COLOR_RED}Error: crowdin-helper.json is invalid${_COLOR_WHITE}`);
+    console.log('Crowdin: Please fix or remove it');
 
     process.exit(1);
   }
@@ -74,13 +75,12 @@ if (process.argv[2] === 'purge') {
       + config.minutesSinceLastMasterMergeToPurgeSafely
       + ' minutes ago. It is not safe to purge crowdin branches now');
 
-    console.log(`${_COLOR_GREEN}Please retry later`);
+    console.log(`${_COLOR_GREEN}Please retry later${_COLOR_WHITE}`);
 
     process.exit(1);
   }
 
   callCrowdinApi('info')
-    .then(res => res.json())
     .then(json => {
       const crowdinBranches = json.files.filter(file => file.node_type === 'branch');
       const gitBranchesConverted = getGitRemoteBranches().map(gitBranch => gitBranch.replace(/\//g, '--'));
@@ -99,7 +99,7 @@ if (process.argv[2] === 'purge') {
           isSomeBranchesDeleted = true;
 
           callCrowdinApi('delete-directory', { name: branch.name })
-            .then((res) => {
+            .then(() => {
               console.log(`Branch "${ branch.name }" is removed from crowdin`);
             })
             .catch(e => {
@@ -135,20 +135,16 @@ if (process.argv[2] === 'up') {
 if (process.argv[2] === 'down') {
   if (process.argv[3] !== '--force' && !isLastSourceFileFromMasterMergedIntoCurrent()) {
     console.log(`Crowdin: ${_COLOR_RED}Please merge last master into your branch and upload sources to crowdin `
-      + `before attempting to download last translations`);
+      + `before attempting to download last translations${_COLOR_WHITE}`);
 
     process.exit(1);
   }
 
   console.log('Crowdin: Uploading sources before downloading');
-
   uploadSources(crowdinBranchName);
 
   console.log('Crowdin: Downloading branch:', crowdinBranchName);
-
-  spawn('crowdin', [ 'download', '-b', crowdinBranchName ], { stdio: 'inherit' });
-
-  console.log(`Crowdin: ${_COLOR_GREEN}Done!`);
+  downloadTranslations(crowdinBranchName);
 
   return;
 }
@@ -198,7 +194,7 @@ function checkProgressOnBranch(branchName) {
     // Let's trigger auto-translate since it is probably a run on Semaphore or other CI tool
     triggerAutoTranslation('master');
 
-    console.log(`Crowdin: ${_COLOR_GREEN}No validation performed since it is a master branch`);
+    console.log(`Crowdin: ${_COLOR_GREEN}No validation performed since it is a master branch${_COLOR_WHITE}`);
 
     return;
   }
@@ -206,7 +202,6 @@ function checkProgressOnBranch(branchName) {
   console.log('Crowdin: Checking language:', config.languageToCheck);
 
   callCrowdinApi('language-status', { language: config.languageToCheck })
-    .then(res => res.json())
     .then(json => {
       const currentBranch = json.files.filter(file => {
         return file.node_type === 'branch'
@@ -215,36 +210,98 @@ function checkProgressOnBranch(branchName) {
         [0];
 
       if (!currentBranch) {
-        console.log(`Crowdin: ${_COLOR_GREEN}Okay, no such branch on crowdin`);
+        console.log(`Crowdin: ${_COLOR_GREEN}Okay, no such branch on crowdin${_COLOR_WHITE}`);
 
         return;
       }
 
       if (currentBranch.phrases === 0) {
-        console.log(`Crowdin: ${_COLOR_GREEN}Okay, no new phrases in this branch`);
+        console.log(`Crowdin: ${_COLOR_GREEN}Okay, no new phrases in this branch${_COLOR_WHITE}`);
 
         return;
       }
 
       if (currentBranch.translated === currentBranch.phrases) {
-        console.log(`Crowdin: ${_COLOR_GREEN}Okay, translations are ready`);
+        console.log(`Crowdin: ${_COLOR_GREEN}Okay, translations are ready${_COLOR_WHITE}`);
 
         return;
       }
 
       console.log(`Crowdin: translated ${ currentBranch.translated } / ${ currentBranch.phrases }`);
-      console.log(`Crowdin: ${_COLOR_RED}Error: There are some missing translations`);
+      console.log(`Crowdin: ${_COLOR_RED}Error: There are some missing translations${_COLOR_WHITE}`);
 
       process.exit(1);
     });
 }
 
-function uploadSources(branchName) {
+async function uploadSources(branchName) {
   console.log('Crowdin: Uploading to branch:', branchName);
 
-  spawn('crowdin', [ 'upload', '-b', branchName ], { stdio: 'inherit' });
+  const isBranchNewlyCreated = await callCrowdinApi('add-directory', {
+    name: branchName,
+    is_branch: '1'
+  })
+    .then(json => json.success);
+
+  const files = await getSourceFiles();
+
+  await Promise.all(
+    files.map(async filePath => {
+      const findDirName = filePath.match(/(.+?)\/[^\/]+$/);
+
+      if (findDirName) {
+        await callCrowdinApi('add-directory', {
+          name: findDirName[1],
+          branch: branchName,
+          recursive: '1'
+        });
+      }
+
+      const fileNameKey = 'files[' + filePath + ']';
+
+      const updateFileMethod = isBranchNewlyCreated
+        ? 'add-file'
+        : 'update-file';
+
+      const response = await callCrowdinApi(updateFileMethod, {
+        [fileNameKey]: fs.createReadStream(filePath),
+        branch: branchName,
+        export_patterns: '/src/i18n/%two_letters_code%.json'
+      })
+        .then(json => {
+          if (json.error && json.error.code === 8) {
+            // File was not found
+
+            return callCrowdinApi('add-file', {
+              [fileNameKey]: fs.createReadStream(filePath),
+              branch: branchName,
+              export_patterns: '/src/i18n/%two_letters_code%.json'
+            });
+          }
+
+          return json;
+        });
+
+      if (response.success) {
+        console.log(`Crowdin:${_COLOR_GREEN} ${ filePath } is uploaded ${_COLOR_WHITE}`);
+      }
+    })
+  );
+
+  // also, what to do with other places, where there are sourceFile only one
+  // also, it should be named as sourceFilePattern probably
 
   triggerAutoTranslation(branchName);
+}
+
+function getSourceFiles() {
+  return new Promise((resolve, reject) => {
+    glob(
+      config.sourceFile,
+      null,
+      (err, files) => err === null ? resolve(files) : reject(err)
+    )
+  });
 }
 
 function getGitRemoteBranches() {
@@ -307,36 +364,40 @@ function isLastSourceFileFromMasterMergedIntoCurrent() {
   return isCurrentBranchContainsThisCommit;
 }
 
-function callCrowdinApi(apiMethod, rawParams = {}) {
-  const params = new URLSearchParams();
+async function callCrowdinApi(apiMethod, rawParams = {}, isJsonResponse = true) {
+  const formData = new FormData();
 
-  params.append('key', config.projectKey);
-  params.append('json', '');
+  formData.append('key', config.projectKey);
+  formData.append('json', '');
 
   for (const key in rawParams) {
     if (Array.isArray(rawParams[key])) {
       rawParams[key].forEach((value) => {
-        params.append(`${ key }[]`, value);
+        formData.append(`${ key }[]`, value);
       });
     } else {
-      params.append(key, rawParams[key]);
+      formData.append(key, rawParams[key]);
     }
   }
 
-  return fetch(
+  const response = await fetch(
     `https://api.crowdin.com/api/project/${ config.projectIdentifier }/${ apiMethod }`,
-    { method: 'POST', body: params }
+    { method: 'POST', body: formData }
   );
+
+  return isJsonResponse
+    ? response.json()
+    : response;
 }
 
 function triggerAutoTranslation(branchName) {
   if (config.disableAutoTranslation) {
-    console.log(`${_COLOR_WHITE}Crowdin: Auto-translation is disabled by "crowdin-helper.json"`);
+    console.log(`Crowdin: Auto-translation is disabled by "crowdin-helper.json"`);
 
     return;
   }
 
-  console.log(`${_COLOR_WHITE}Crowdin: Triggering auto-translation of a branch "${ branchName }"`);
+  console.log(`Crowdin: Triggering auto-translation of a branch: ${ branchName }`);
 
   callCrowdinApi(
     'pre-translate',
@@ -348,15 +409,47 @@ function triggerAutoTranslation(branchName) {
       'perfect_match': 1
     }
   )
-    .then(res => res.json())
     .then((json) => {
       if (!json.success) {
         console.log(`Crowdin: ${_COLOR_RED}Error:`);
-        console.log(json);
+        console.log(json, _COLOR_WHITE);
       }
     })
     .catch(e => {
-      console.log(`Crowdin: ${_COLOR_RED}Error: Failed to auto-translate branch ${ branch.name }`);
+      console.log(`Crowdin: ${_COLOR_RED}Error: Failed to auto-translate branch ${ branch.name }${_COLOR_WHITE}`);
       console.log(`Original error: ${ e }`);
+    });
+}
+
+async function downloadTranslations(branchName) {
+  await callCrowdinApi(`export`, { branch: branchName });
+
+  return await callCrowdinApi(`download/all.zip`, { branch: branchName }, false)
+    .then(res => {
+      console.dir(res);
+
+      res.body.pipe(unzipper.Parse())
+        .on('entry', (entry) => {
+          if (entry.type === 'File') {
+            const fileName = entry.path.replace(branchName, '').replace(/^\//, '');
+
+            console.dir(entry.path);
+
+            entry.pipe(fs.createWriteStream(fileName)
+              .on('finish', () => {
+                console.log(`Crowdin: ${_COLOR_GREEN}Unzipped`, fileName, _COLOR_WHITE);
+              }));
+
+            return;
+          }
+
+          entry.autodrain();
+        })
+        .promise()
+        .catch((e) => {
+          console.log(`Crowdin: ${_COLOR_RED}Unzipping filed. Probably broken ZIP file${_COLOR_WHITE}`);
+          console.log(e);
+        });
+
     });
 }

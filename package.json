@@ -23,6 +23,9 @@
   },
   "homepage": "https://github.com/yuriykuzin/crowdin-helper#readme",
   "dependencies": {
-    "node-fetch": "2.1.1"
+    "form-data": "2.3.2",
+    "glob": "7.1.2",
+    "node-fetch": "2.1.1",
+    "unzipper": "0.8.13"
   }
 }
