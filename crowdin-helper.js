@@ -14,58 +14,18 @@
 //   auto-translate  - Trigger auto-translation (from TM, with perfect-match)
 
 
-const fetch = require('node-fetch');
 const spawn = require('child_process').spawnSync;
 const fs = require('fs');
 const unzipper = require('unzipper');
 const glob = require('glob');
-const FormData = require('form-data');
 
 const _COLOR_GREEN = '\x1b[32m';
 const _COLOR_RED = '\x1b[31m';
 const _COLOR_WHITE = '\x1b[37m';
 
+const config = require('./lib/config');
+const crowdinFetch = require('./lib/crowdin-fetch');
 
-// Reading config files:
-//
-// 1 - crowdin CLI config (crowdin.yml)
-
-if (!fs.existsSync('crowdin.yml')) {
-  console.log(`Crowdin: ${_COLOR_RED}Error: crowdin.yml is missing${_COLOR_WHITE}`);
-  console.log('Crowdin: Please generate config file using crowdin CLI and fill project_identifier, api_key, source file name');
-
-  process.exit(1);
-}
-
-const crowdinYml = fs.readFileSync('crowdin.yml', 'utf8');
-
-// 2 - crowdin-helper.json config
-
-let crowdinHelperJson = {};
-
-if (fs.existsSync('crowdin-helper.json')) {
-  try {
-    crowdinHelperJson = JSON.parse(fs.readFileSync('crowdin-helper.json', 'utf8'));
-  } catch (err) {
-    console.log(`Crowdin: ${_COLOR_RED}Error: crowdin-helper.json is invalid${_COLOR_WHITE}`);
-    console.log('Crowdin: Please fix or remove it');
-
-    process.exit(1);
-  }
-}
-
-const config = {
-  projectIdentifier: crowdinYml.match(/project_identifier\W*:\W*"?([^["\n]+)/)[1],
-  projectKey: crowdinYml.match(/api_key\W*:\W*"?([^["\n]+)/)[1],
-  sourceFile: crowdinYml.match(/source\W*:\W*"?([^["\n]+)/)[1],
-  languageToCheck: crowdinHelperJson.languageToCheck || 'nl',
-  languagesToAutoTranslate: crowdinHelperJson.languagesToAutoTranslate || ['nl'],
-  daysSinceLastUpdatedToDeleteBranchSafely: crowdinHelperJson.daysSinceLastUpdatedToDeleteBranchSafely || 3,
-  minutesSinceLastMasterMergeToPurgeSafely: crowdinHelperJson.minutesSinceLastMasterMergeToPurgeSafely || 20,
-  disableAutoTranslation: crowdinHelperJson.disableAutoTranslation === true,
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 if (process.argv[2] === 'purge') {
   const minutesFromLastMasterMerge = getDateDiffInMinutes(getLastCommitToMasterDate(), new Date());
@@ -80,7 +40,7 @@ if (process.argv[2] === 'purge') {
     process.exit(1);
   }
 
-  callCrowdinApi('info')
+  crowdinFetch('info')
     .then(json => {
       const crowdinBranches = json.files.filter(file => file.node_type === 'branch');
       const gitBranchesConverted = getGitRemoteBranches().map(gitBranch => gitBranch.replace(/\//g, '--'));
@@ -98,7 +58,7 @@ if (process.argv[2] === 'purge') {
         ) {
           isSomeBranchesDeleted = true;
 
-          callCrowdinApi('delete-directory', { name: branch.name })
+          crowdinFetch('delete-directory', { name: branch.name })
             .then(() => {
               console.log(`Branch "${ branch.name }" is removed from crowdin`);
             })
@@ -198,7 +158,7 @@ function checkProgressOnBranch(branchName) {
 
   console.log('Crowdin: Checking language:', config.languageToCheck);
 
-  callCrowdinApi('language-status', { language: config.languageToCheck })
+  crowdinFetch('language-status', { language: config.languageToCheck })
     .then(json => {
       const currentBranch = json.files.filter(file => {
         return file.node_type === 'branch'
@@ -234,7 +194,7 @@ function checkProgressOnBranch(branchName) {
 async function uploadSources(branchName) {
   console.log('Crowdin: Uploading to branch:', branchName);
 
-  const isBranchNewlyCreated = await callCrowdinApi('add-directory', {
+  const isBranchNewlyCreated = await crowdinFetch('add-directory', {
     name: branchName,
     is_branch: '1'
   })
@@ -247,7 +207,7 @@ async function uploadSources(branchName) {
       const findDirName = filePath.match(/(.+?)\/[^\/]+$/);
 
       if (findDirName) {
-        await callCrowdinApi('add-directory', {
+        await crowdinFetch('add-directory', {
           name: findDirName[1],
           branch: branchName,
           recursive: '1'
@@ -257,22 +217,24 @@ async function uploadSources(branchName) {
       const fileNameKey = 'files[' + filePath + ']';
       const exportPatternsKey = 'export_patterns[' + filePath + ']';
 
+      // We assume, that file is already there is branch was already existed
+      // If, not and therefore 'update-file' failes, we'll perform 'add-file' then
       const updateFileMethod = isBranchNewlyCreated
         ? 'add-file'
         : 'update-file';
 
-      const response = await callCrowdinApi(updateFileMethod, {
+      const response = await crowdinFetch(updateFileMethod, {
         [fileNameKey]: fs.createReadStream(filePath),
-        [exportPatternsKey]: '/src/i18n/%two_letters_code%.json',
+        [exportPatternsKey]: config.translationPattern,
         branch: branchName
       })
         .then(json => {
           if (json.error && json.error.code === 8) {
             // File was not found
 
-            return callCrowdinApi('add-file', {
+            return crowdinFetch('add-file', {
               [fileNameKey]: fs.createReadStream(filePath),
-              [exportPatternsKey]: '/src/i18n/%two_letters_code%.json',
+              [exportPatternsKey]: config.translationPattern,
               branch: branchName
             });
           }
@@ -295,7 +257,7 @@ async function uploadSources(branchName) {
 function getSourceFiles() {
   return new Promise((resolve, reject) => {
     glob(
-      config.sourceFile,
+      config.sourceFilesPattern,
       null,
       (err, files) => err === null ? resolve(files) : reject(err)
     )
@@ -311,7 +273,7 @@ function getGitRemoteBranches() {
 function isSourceFileDiffersFromMaster() {
   const child = spawn('git', ['diff', 'origin/master', 'HEAD', '--stat', '--name-only']);
 
-  return child.stdout.indexOf(config.sourceFile) !== -1;
+  return child.stdout.indexOf(config.sourceFilesPattern) !== -1;
 }
 
 function getFileLastUpdated(crowdinBranchObj) {
@@ -349,7 +311,7 @@ function getLastCommitToMasterDate() {
 function isLastSourceFileFromMasterMergedIntoCurrent() {
   spawn('git', ['fetch']);
 
-  const commitId = spawn('git', ['log', '-1', '--pretty=format:"%H"' , 'origin/master', config.sourceFile])
+  const commitId = spawn('git', ['log', '-1', '--pretty=format:"%H"' , 'origin/master', config.sourceFilesPattern])
     .stdout
     .toString()
     .replace(/"/g, '');
@@ -362,32 +324,6 @@ function isLastSourceFileFromMasterMergedIntoCurrent() {
   return isCurrentBranchContainsThisCommit;
 }
 
-async function callCrowdinApi(apiMethod, rawParams = {}, isJsonResponse = true) {
-  const formData = new FormData();
-
-  formData.append('key', config.projectKey);
-  formData.append('json', '');
-
-  for (const key in rawParams) {
-    if (Array.isArray(rawParams[key])) {
-      rawParams[key].forEach((value) => {
-        formData.append(`${ key }[]`, value);
-      });
-    } else {
-      formData.append(key, rawParams[key]);
-    }
-  }
-
-  const response = await fetch(
-    `https://api.crowdin.com/api/project/${ config.projectIdentifier }/${ apiMethod }`,
-    { method: 'POST', body: formData }
-  );
-
-  return isJsonResponse
-    ? response.json()
-    : response;
-}
-
 function triggerAutoTranslation(branchName) {
   if (config.disableAutoTranslation) {
     console.log(`Crowdin: Auto-translation is disabled by "crowdin-helper.json"`);
@@ -397,11 +333,11 @@ function triggerAutoTranslation(branchName) {
 
   console.log(`Crowdin: Triggering auto-translation of a branch: ${ branchName }`);
 
-  callCrowdinApi(
+  crowdinFetch(
     'pre-translate',
     {
       'languages': config.languagesToAutoTranslate,
-      'files': [`${ branchName }/${ config.sourceFile }`],
+      'files': [`${ branchName }/${ config.sourceFilesPattern }`],
       'method': 'tm',
       'apply_untranslated_strings_only': 1,
       'perfect_match': 1
@@ -423,9 +359,9 @@ async function downloadTranslations(branchName) {
   console.log('Crowdin: Uploading sources before downloading');
   await uploadSources(branchName);
 
-  await callCrowdinApi(`export`, { branch: branchName });
+  await crowdinFetch(`export`, { branch: branchName });
 
-  return await callCrowdinApi(`download/all.zip`, { branch: branchName }, false)
+  return await crowdinFetch(`download/all.zip`, { branch: branchName }, false)
     .then(res => {
       res.body.pipe(unzipper.Parse())
         .on('entry', (entry) => {
@@ -444,7 +380,7 @@ async function downloadTranslations(branchName) {
         })
         .promise()
         .catch((e) => {
-          console.log(`Crowdin: ${_COLOR_RED}Unzipping filed. Probably broken ZIP file${_COLOR_WHITE}`);
+          console.log(`Crowdin: ${_COLOR_RED}Unzipping failed. Probably broken ZIP file${_COLOR_WHITE}`);
           console.log(e);
         });
 

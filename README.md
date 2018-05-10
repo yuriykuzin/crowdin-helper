@@ -25,12 +25,22 @@ Add crowdin-helper.json to the root of your project. Here is an example:
 
 ```
 {
+  "projectIdentifier": "my-project-name",
+  "projectKey": "my-project-api-key",
+  "source": "/src/i18n/en.json",
+  "translation": "/src/i18n/%two_letters_code%.json",
   "languageToCheck": "nl",
   "languagesToAutoTranslate": ["nl", "fi"],
   "daysSinceLastUpdatedToDeleteBranchSafely": 3,
-  "minutesSinceLastMasterMergeToPurgeSafely": 20
-  "disableAutoTranslation": true
+  "minutesSinceLastMasterMergeToPurgeSafely": 20,
+  "disableAutoTranslation": false
 }
+```
+
+Also, you can use patterns in "source" property:
+
+```
+  "source": "/**/en.json"
 ```
 
 ##### Step 3
