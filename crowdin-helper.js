@@ -3,18 +3,22 @@
 //   node crowdin-helper [command]
 
 //   COMMANDS
-//   up            - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
-//   down          - Downloads translations from the current branch in crowdin (evaluated from GIT branch)
-//                  (it will fail if the last commit in source file from the master is not merged to the current branch)
-//   down --force  - Same as previous, but without master merge checking (less safe, not recommended)
-//   progress      - Shows progress status on current branch. Exit with error if incomplete
-//   pre-push      - Checks if source file differs from master and if yes, uploads source file to crowdin
-//   purge         - Delete all unused branches from crowdin (each branch without relevant GIT branch)
+//   up              - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
+//   down            - Downloads translations from the current branch in crowdin (evaluated from GIT branch)
+//                      (it will fail if the last commit in source file from the master is not merged
+//                       to the current branch)
+//   down --force    - Same as previous, but without master merge checking (less safe, not recommended)
+//   progress        - Shows progress status on current branch. Exit with error if incomplete
+//   pre-push        - Checks if source file differs from master and if yes, uploads source file to crowdin
+//   purge           - Delete all unused branches from crowdin (each branch without relevant GIT branch)
+//   auto-translate  - Trigger auto-translation (from TM, with perfect-match)
 
 
 const fetch = require('node-fetch');
 const spawn = require('child_process').spawnSync;
 const fs = require('fs');
+
+const { URLSearchParams } = require('url');
 
 const _COLOR_GREEN = '\x1b[32m';
 const _COLOR_RED = '\x1b[31m';
@@ -54,8 +58,10 @@ const config = {
   projectKey: crowdinYml.match(/api_key\W*:\W*"?([^["\n]+)/)[1],
   sourceFile: crowdinYml.match(/source\W*:\W*"?([^["\n]+)/)[1],
   languageToCheck: crowdinHelperJson.languageToCheck || 'nl',
+  languagesToAutoTranslate: crowdinHelperJson.languagesToAutoTranslate || ['nl'],
   daysSinceLastUpdatedToDeleteBranchSafely: crowdinHelperJson.daysSinceLastUpdatedToDeleteBranchSafely || 3,
   minutesSinceLastMasterMergeToPurgeSafely: crowdinHelperJson.minutesSinceLastMasterMergeToPurgeSafely || 20,
+  disableAutoTranslation: crowdinHelperJson.disableAutoTranslation === true,
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,11 +79,7 @@ if (process.argv[2] === 'purge') {
     process.exit(1);
   }
 
-  fetch(
-    `https://api.crowdin.com/api/project/${ config.projectIdentifier }/info?`
-      + `key=${ config.projectKey }&json`,
-    { method: 'POST' }
-  )
+  callCrowdinApi('info')
     .then(res => res.json())
     .then(json => {
       const crowdinBranches = json.files.filter(file => file.node_type === 'branch');
@@ -96,11 +98,7 @@ if (process.argv[2] === 'purge') {
         ) {
           isSomeBranchesDeleted = true;
 
-          fetch(
-            `https://api.crowdin.com/api/project/${ config.projectIdentifier }/delete-directory?`
-              + `key=${ config.projectKey }&name=${ branch.name }`,
-            { method: 'POST' }
-          )
+          callCrowdinApi('delete-directory', { name: branch.name })
             .then((res) => {
               console.log(`Branch "${ branch.name }" is removed from crowdin`);
             })
@@ -161,6 +159,12 @@ if (process.argv[2] === 'progress') {
   return;
 }
 
+if (process.argv[2] === 'auto-translate') {
+  triggerAutoTranslation(crowdinBranchName);
+
+  return;
+}
+
 if (process.argv[2] === 'pre-push') {
   if (isSourceFileDiffersFromMaster()) {
     uploadSources(crowdinBranchName);
@@ -175,26 +179,33 @@ console.log(`
   node crowdin-helper [command]
 
   COMMANDS
-  up            - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
-  down          - Downloads translations from the current branch in crowdin (evaluated from GIT branch)
-                  (it will fail if the last commit in source file from the master is not merged to the current branch)
-  down --force  - Same as previous, but without master merge checking (less safe, not recommended)
-  progress      - Shows progress status on current branch. Exit with error if incomplete
-  pre-push      - Checks if source file differs from master and if yes, uploads source file to crowdin
-  purge         - Delete all unused branches from crowdin (each branch without relevant GIT branch)
+  up              - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
+  down            - Downloads translations from the current branch in crowdin (evaluated from GIT branch)
+                     (it will fail if the last commit in source file from the master is not merged
+                      to the current branch)
+  down --force    - Same as previous, but without master merge checking (less safe, not recommended)
+  progress        - Shows progress status on current branch. Exit with error if incomplete
+  pre-push        - Checks if source file differs from master and if yes, uploads source file to crowdin
+  purge           - Delete all unused branches from crowdin (each branch without relevant GIT branch)
+  auto-translate  - Trigger auto-translation (from TM, with perfect-match)
 `);
 
 
 // Functions:
 
 function checkProgressOnBranch(branchName) {
+  if (branchName === 'master') {
+    // Let's trigger auto-translate since it is probably a run on Semaphore or other CI tool
+    triggerAutoTranslation('master');
+
+    console.log(`Crowdin: ${_COLOR_GREEN}No validation performed since it is a master branch`);
+
+    return;
+  }
+
   console.log('Crowdin: Checking language:', config.languageToCheck);
 
-  fetch(
-    `https://api.crowdin.com/api/project/${ config.projectIdentifier }/language-status?`
-      + `key=${ config.projectKey }&json&language=${ config.languageToCheck }`,
-    { method: 'POST' }
-  )
+  callCrowdinApi('language-status', { language: config.languageToCheck })
     .then(res => res.json())
     .then(json => {
       const currentBranch = json.files.filter(file => {
@@ -211,12 +222,6 @@ function checkProgressOnBranch(branchName) {
 
       if (currentBranch.phrases === 0) {
         console.log(`Crowdin: ${_COLOR_GREEN}Okay, no new phrases in this branch`);
-
-        return;
-      }
-
-      if (branchName === 'master') {
-        console.log(`Crowdin: ${_COLOR_GREEN}No validation performed since it is a master branch`);
 
         return;
       }
@@ -238,6 +243,8 @@ function uploadSources(branchName) {
   console.log('Crowdin: Uploading to branch:', branchName);
 
   spawn('crowdin', [ 'upload', '-b', branchName ], { stdio: 'inherit' });
+
+  triggerAutoTranslation(branchName);
 }
 
 function getGitRemoteBranches() {
@@ -298,4 +305,58 @@ function isLastSourceFileFromMasterMergedIntoCurrent() {
     .indexOf(gitBranchName) !== -1;
 
   return isCurrentBranchContainsThisCommit;
+}
+
+function callCrowdinApi(apiMethod, rawParams = {}) {
+  const params = new URLSearchParams();
+
+  params.append('key', config.projectKey);
+  params.append('json', '');
+
+  for (const key in rawParams) {
+    if (Array.isArray(rawParams[key])) {
+      rawParams[key].forEach((value) => {
+        params.append(`${ key }[]`, value);
+      });
+    } else {
+      params.append(key, rawParams[key]);
+    }
+  }
+
+  return fetch(
+    `https://api.crowdin.com/api/project/${ config.projectIdentifier }/${ apiMethod }`,
+    { method: 'POST', body: params }
+  );
+}
+
+function triggerAutoTranslation(branchName) {
+  if (config.disableAutoTranslation) {
+    console.log(`${_COLOR_WHITE}Crowdin: Auto-translation is disabled by "crowdin-helper.json"`);
+
+    return;
+  }
+
+  console.log(`${_COLOR_WHITE}Crowdin: Triggering auto-translation of a branch "${ branchName }"`);
+
+  callCrowdinApi(
+    'pre-translate',
+    {
+      'languages': config.languagesToAutoTranslate,
+      'files': [`${ branchName }/${ config.sourceFile }`],
+      'method': 'tm',
+      'apply_untranslated_strings_only': 1,
+      'perfect_match': 1
+    }
+  )
+    .then(res => res.json())
+    .then((json) => {
+      if (!json.success) {
+        console.log(`Crowdin: ${_COLOR_RED}Error:`);
+        console.log(json);
+      }
+    })
+    .catch(e => {
+      console.log(`Crowdin: ${_COLOR_RED}Error: Failed to auto-translate branch ${ branch.name }`);
+      console.log(`Original error: ${ e }`);
+    });
 }
