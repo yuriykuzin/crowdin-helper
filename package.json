@@ -6,7 +6,7 @@
     "crowdin-helper": "./crowdin-helper.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -27,5 +27,9 @@
     "glob": "7.1.2",
     "node-fetch": "2.1.1",
     "unzipper": "0.8.13"
+  },
+  "devDependencies": {
+    "jest": "22.4.3",
+    "jest-fetch-mock": "1.5.0"
   }
 }
