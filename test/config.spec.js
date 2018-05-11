@@ -4,10 +4,9 @@ describe('config', () => {
   const originalProcess = process;
   const processExitMock = jest.fn();
 
+  let consoleData = '';
   const originalConsole = global.console;
   const consoleLogMock = jest.fn(value => (consoleData += value));
-
-  let consoleData = '';
 
   beforeEach(() => {
     jest.resetModules();

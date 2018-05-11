@@ -13,22 +13,23 @@ describe('crowdin-fetch', () => {
 
   beforeEach(() => {
     fetch.resetMocks();
+    fetch.mockResponseOnce(JSON.stringify(sampleResponse));
   });
 
+
   test('crowdinFetch calls node-fetch, sends FormData and gets sample JSON response', async () => {
-    fetch.mockResponse(JSON.stringify(sampleResponse));
-
     const response = await crowdinFetch('export');
+    const firstFetchArgument = fetch.mock.calls[0][0];
+    const secondFetchArgument = fetch.mock.calls[0][1];
 
-    expect(fetch.mock.calls[0][0]).toEqual('https://api.crowdin.com/api/project/my-project-name/export');
-    expect(fetch.mock.calls[0][1].method).toBe('POST');
-    expect(fetch.mock.calls[0][1].body._streams).toBeDefined();
-    expect(fetch.mock.calls[0][1].body._streams[1]).toBe('my-project-api-key');
+    expect(firstFetchArgument).toEqual('https://api.crowdin.com/api/project/my-project-name/export');
+    expect(secondFetchArgument.method).toBe('POST');
+    expect(secondFetchArgument.body._streams).toBeDefined();
+    expect(secondFetchArgument.body._streams[1]).toBe('my-project-api-key');
     expect(response).toEqual(sampleResponse);
   });
 
   test('crowdinFetch gets raw (not JSON) response', async () => {
-    fetch.mockResponse(JSON.stringify(sampleResponse));
     const response = await crowdinFetch('export', {}, false);
 
     expect(response.status).toEqual(200);
@@ -36,10 +37,11 @@ describe('crowdin-fetch', () => {
 
   test('crowdinFetch converts input array to set of pairs in FormData', async () => {
     const response = await crowdinFetch('pre-translate', { languages: ['nl', 'en'] }, false);
+    const secondFetchArgumentBody = fetch.mock.calls[0][1].body;
 
-    expect(fetch.mock.calls[0][1].body._streams[6]).toMatch('name="languages[]"');
-    expect(fetch.mock.calls[0][1].body._streams[7]).toBe('nl');
-    expect(fetch.mock.calls[0][1].body._streams[9]).toMatch('name="languages[]"');
-    expect(fetch.mock.calls[0][1].body._streams[10]).toBe('en');
+    expect(secondFetchArgumentBody._streams[6]).toMatch('name="languages[]"');
+    expect(secondFetchArgumentBody._streams[7]).toBe('nl');
+    expect(secondFetchArgumentBody._streams[9]).toMatch('name="languages[]"');
+    expect(secondFetchArgumentBody._streams[10]).toBe('en');
   });
 });

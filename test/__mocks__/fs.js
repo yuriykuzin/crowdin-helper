@@ -4,8 +4,8 @@ const MOCK_CONFIG_FILE_CONTENT_DEFAULT = `
   {
     "projectIdentifier": "my-project-name",
     "projectKey": "my-project-api-key",
-    "source": "/src/i18n/en.json",
-    "translation": "/src/i18n/%two_letters_code%.json",
+    "source": "/**/en.json",
+    "translation": "/sample-translation-folder/%two_letters_code%.json",
     "languageToCheck": "nl",
     "languagesToAutoTranslate": ["nl", "fi"],
     "daysSinceLastUpdatedToDeleteBranchSafely": 3,
