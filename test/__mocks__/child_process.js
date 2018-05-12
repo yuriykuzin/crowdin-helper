@@ -5,6 +5,10 @@ const responses = [];
 function spawnSync(command, args = []) {
   const joinedCommand = [command, ...args].join(' ');
 
+  if (!responses[joinedCommand]) {
+    console.log(`spawnSync mock: pls add response for: ${ joinedCommand }`);
+  }
+
   return {
     stdout: {
       toString: () => {
