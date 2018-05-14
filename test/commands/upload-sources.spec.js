@@ -12,7 +12,6 @@ jest.mock('glob', () => {
   });
 });
 
-
 const originalProcess = process;
 const processExitMock = jest.fn((code) => {
   throw new Error(`process exit ${ code }`);
@@ -21,39 +20,37 @@ const processExitMock = jest.fn((code) => {
 let consoleData = '';
 const originalConsole = global.console;
 const consoleLogMock = jest.fn(value => {
-  originalConsole.log(value);
+  // originalConsole.log(value);
   consoleData += value;
 });
 
-let mockedChildProcess;
-
-beforeEachFn = () => {
-  jest.resetModules();
-  mockedFetch.resetMocks();
-
-  global.console = {
-    ...global.console,
-    log: consoleLogMock
-  }
-
-  global.process = {
-    ...global.process,
-    exit: processExitMock
-  };
-
-  mockedChildProcess = require('child_process');
-  consoleData = '';
-}
-
-afterEachFn = () => {
-  global.process = originalProcess;
-  global.console = originalConsole;
-};
-
 
 describe('uploadSources', async () => {
-  beforeEach(beforeEachFn);
-  afterEach(afterEachFn);
+  let mockedChildProcess;
+
+  beforeEach(() => {
+    jest.resetModules();
+    mockedFetch.resetMocks();
+
+    global.console = {
+      ...global.console,
+      log: consoleLogMock
+    }
+
+    global.process = {
+      ...global.process,
+      exit: processExitMock
+    };
+
+    mockedChildProcess = require('child_process');
+    consoleData = '';
+  });
+
+  afterEach(() => {
+    global.process = originalProcess;
+    global.console = originalConsole;
+  });
+
 
   test('should perform upload source and then download and unzip translation', async () => {
     mockedChildProcess.__setResponse('git rev-parse --abbrev-ref HEAD', 'feature/my-feature-branch');
