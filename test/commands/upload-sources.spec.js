@@ -88,6 +88,7 @@ describe('uploadSources', async () => {
       .toEqual(fs.createReadStream('test/sample-source-file/en.json')._readableState.buffer);
 
     expect(consoleData.indexOf('Uploading to branch: feature--my-feature-branch') !== -1).toBeTruthy();
+    expect(consoleData.indexOf('test/sample-source-file/en.json is uploaded') !== -1).toBeTruthy();
     expect(consoleData.indexOf('Triggering auto-translation of a branch: feature--my-feature-branch') !== -1).toBeTruthy();
 
     const properApiCallsOrder = [
