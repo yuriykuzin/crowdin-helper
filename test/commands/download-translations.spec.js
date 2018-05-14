@@ -68,7 +68,7 @@ describe('downloadTranslations', async () => {
        * another-feature/my-another-feature-branch`
     );
 
-    const { downloadTranslations } = require('../lib/crowdin-methods');
+    const downloadTranslations = require('../../lib/commands/download-translations');
     expect(consoleData.indexOf('Working on git branch: feature/my-feature-branch') !== -1).toBeTruthy();
 
     try {
@@ -81,7 +81,7 @@ describe('downloadTranslations', async () => {
   test('should perform upload source and then download and unzip translation', async () => {
     mockedChildProcess.__setResponse('git rev-parse --abbrev-ref HEAD', 'feature/my-feature-branch');
 
-    const { downloadTranslations } = require('../lib/crowdin-methods');
+    const downloadTranslations = require('../../lib/commands/download-translations');
     expect(consoleData.indexOf('Working on git branch: feature/my-feature-branch') !== -1).toBeTruthy();
     consoleData = '';
 
@@ -150,62 +150,6 @@ describe('downloadTranslations', async () => {
       'https://api.crowdin.com/api/project/my-project-name/pre-translate',
       'https://api.crowdin.com/api/project/my-project-name/export',
       'https://api.crowdin.com/api/project/my-project-name/download/all.zip'
-    ];
-
-    properApiCallsOrder.forEach((apiCall, index) => {
-      expect(mockedFetch.mock.calls[index][0]).toEqual(apiCall);
-    })
-  });
-});
-
-
-describe('uploadSources', async () => {
-  beforeEach(beforeEachFn);
-  afterEach(afterEachFn);
-
-  test('should perform upload source and then download and unzip translation', async () => {
-    mockedChildProcess.__setResponse('git rev-parse --abbrev-ref HEAD', 'feature/my-feature-branch');
-
-    const { uploadSources } = require('../lib/crowdin-methods');
-    expect(consoleData.indexOf('Working on git branch: feature/my-feature-branch') !== -1).toBeTruthy();
-    consoleData = '';
-
-    mockedFetch.mockResponses(
-      [
-        // https://api.crowdin.com/api/project/my-project-name/add-directory
-        JSON.stringify({ success: true }),
-        { status: 200 }
-      ],
-      [
-        // https://api.crowdin.com/api/project/my-project-name/add-directory
-        JSON.stringify({ success: true }),
-        { status: 200 }
-      ],
-      [
-        // https://api.crowdin.com/api/project/my-project-name/add-file
-        JSON.stringify({ success: true }),
-        { status: 200 }
-      ],
-      [
-        // https://api.crowdin.com/api/project/my-project-name/pre-translate
-        JSON.stringify({ success: true }),
-        { status: 200 }
-      ]
-    );
-
-    await uploadSources();
-
-    expect(mockedFetch.mock.calls[2][1].body._streams[7].source._readableState.buffer)
-      .toEqual(fs.createReadStream('test/sample-source-file/en.json')._readableState.buffer);
-
-    expect(consoleData.indexOf('Uploading to branch: feature--my-feature-branch') !== -1).toBeTruthy();
-    expect(consoleData.indexOf('Triggering auto-translation of a branch: feature--my-feature-branch') !== -1).toBeTruthy();
-
-    const properApiCallsOrder = [
-      'https://api.crowdin.com/api/project/my-project-name/add-directory',
-      'https://api.crowdin.com/api/project/my-project-name/add-directory',
-      'https://api.crowdin.com/api/project/my-project-name/add-file',
-      'https://api.crowdin.com/api/project/my-project-name/pre-translate'
     ];
 
     properApiCallsOrder.forEach((apiCall, index) => {

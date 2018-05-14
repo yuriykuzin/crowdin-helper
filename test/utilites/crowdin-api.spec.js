@@ -2,7 +2,7 @@ const fetch = require('jest-fetch-mock');
 jest.setMock('node-fetch', fetch);
 jest.mock('fs');
 
-const CrowdinApi = require('../lib/utilities/crowdin-api');
+const CrowdinApi = require('../../lib/utilities/crowdin-api');
 
 
 describe('CrowdinApi', () => {

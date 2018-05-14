@@ -14,14 +14,11 @@
 //   auto-translate  - Trigger auto-translation (from TM, with perfect-match)
 
 
-const {
-  downloadTranslations,
-  uploadSources,
-  checkProgressOnBranch,
-  triggerAutoTranslation,
-  deleteOldBranches
-} = require('./lib/crowdin-methods');
-
+const downloadTranslations = require('./lib/commands/download-translations');
+const uploadSources = require('./lib/commands/upload-sources');
+const checkProgressOnBranch = require('./lib/commands/check-progress-on-branch');
+const triggerAutoTranslation = require('./lib/commands/trigger-auto-translation');
+const deleteOldBranches = require('./lib/commands/delete-old-branches');
 
 switch(process.argv[2]) {
   case 'purge':

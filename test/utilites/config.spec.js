@@ -30,7 +30,7 @@ describe('config', () => {
   });
 
   test('read config file and fill all fields', () => {
-    const config = require('../lib/config');
+    const config = require('../../lib/utilities/config');
 
     expect(config).toEqual({
       "projectIdentifier": "my-project-name",
@@ -50,7 +50,7 @@ describe('config', () => {
     let config;
 
     try {
-      config = require('../lib/config');
+      config = require('../../lib/utilities/config');
     } catch(e) {}
 
     expect(config).toBeUndefined();
@@ -69,7 +69,7 @@ describe('config', () => {
     let config;
 
     try {
-      config = require('../lib/config');
+      config = require('../../lib/utilities/config');
     } catch(e) {}
 
     expect(config).toBeUndefined();
