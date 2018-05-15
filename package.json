@@ -1,6 +1,6 @@
 {
   "name": "crowdin-helper",
-  "version": "0.0.14",
+  "version": "1.0.0-rc.1",
   "engines": {
     "node": ">=7.6"
   },
