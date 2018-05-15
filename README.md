@@ -1,5 +1,7 @@
 # crowdin-helper
 
+[![Build Status](https://semaphoreci.com/api/v1/yuriykuzin/crowdin-helper/branches/master/shields_badge.svg)](https://semaphoreci.com/yuriykuzin/crowdin-helper)
+
 Unofficial Crowdin client to automate continuous integration workflow.
 
 (Since version 1.0.0-rc.1 is not dependent on the official Crowdin CLI)
