@@ -101,10 +101,10 @@ We're using https://semaphoreci.com for building and deploying our github branch
 
 If you do so, you will be able to merge branch only if relevant translations on crowdin are ready.
 
-Also, we're using the following "After job" on Semaphore to automate cleaning up outdated crowdin branches:
+Also, we're using the following "After job" on Semaphore's build configuration to automate cleaning up outdated crowdin branches:
 
 ```
-if [ "$BRANCH_NAME" = "master" ]; then sleep 20m && node ./node_modules/crowdin-helper/crowdin-helper.js purge ; fi
+if [ "$BRANCH_NAME" != "master" ]; then node ./node_modules/crowdin-helper/crowdin-helper.js purge ; fi
 ```
 
 ## Usage
