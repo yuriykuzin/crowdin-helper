@@ -1,11 +1,19 @@
 # crowdin-helper
 
-Unofficial addition to Crowdin CLI to automate continuous integration workflow.
+Unofficial Crowdin client to automate continuous integration workflow.
 
-This is an initial, prototype version, which we experiment with to use in our team's workflow. For now some things are harcoded inside, accordingly to our own needs. You're welcome to use it as a source of inspiration, fork it and modify code to make it usable in your projects. We would appreciate any kind of feedback, suggestions, pull requests.
+(Since version 1.0.0-rc.1 is not dependent on the official Crowdin CLI)
+
+This is a current version, which we experiment with to use in our team's workflow. For now some things are harcoded inside, accordingly to our own needs. You're welcome to use it as a source of inspiration, fork it and modify code to make it usable in your projects. We would appreciate any kind of feedback, suggestions, pull requests.
 
 #### Disclaimer:
 Crowdin and the Crowdin API are the property of Crowdin, LLC.
+
+## Changes in 1.0.0-rc.1
+
+- It is not dependent on Crowdin CLI anymore
+- `projectKey` and `projectIdentifier` have to be configured in `crowdin-helper.json` in the root of your project
+- Automatic translation (in case of "perfect match" with Translation Memory) is triggered after each file upload and progress checking on master branch (you can also disable this if you want)
 
 ## Installation from npm
 `npm i crowdin-helper --save-dev`
@@ -16,24 +24,29 @@ Crowdin and the Crowdin API are the property of Crowdin, LLC.
 ## Post-installation recommended steps
 
 ##### Step 1
-Make sure that you have official Crowdin CLI client installed and configured properly. That means you can run `crowdin`, also you have crowdin.yaml in the root of your project, which contains at least project_identifier, api_key and source file name.
-
-More details on setting up Crowdin CLI are here: https://support.crowdin.com/cli-tool
-
-##### Step 2
 Add crowdin-helper.json to the root of your project. Here is an example:
 
 ```
 {
+  "projectIdentifier": "my-project-name",
+  "projectKey": "my-project-api-key",
+  "source": "/src/i18n/en.json",
+  "translation": "/src/i18n/%two_letters_code%.json",
   "languageToCheck": "nl",
   "languagesToAutoTranslate": ["nl", "fi"],
   "daysSinceLastUpdatedToDeleteBranchSafely": 3,
-  "minutesSinceLastMasterMergeToPurgeSafely": 20
-  "disableAutoTranslation": true
+  "minutesSinceLastMasterMergeToPurgeSafely": 20,
+  "disableAutoTranslation": false
 }
 ```
 
-##### Step 3
+Also, you can use patterns in "source" property:
+
+```
+  "source": "/**/en.json"
+```
+
+##### Step 2
 In our project we add these shorcuts to "scripts" section in package.json:
 
 ```
@@ -49,7 +62,7 @@ In our project we add these shorcuts to "scripts" section in package.json:
 }
 ```
 
-##### Step 4
+##### Step 3
 We use pre-push git hook that upload translation sources to crowdin before pushing files to the github branch. You can create in the root file named `pre-push.sh` that contains:
 
 ```
@@ -60,7 +73,7 @@ echo "Checking if en.json changed...";
 node ./node_modules/crowdin-helper/crowdin-helper pre-push
 ```
 
-##### Step 5
+##### Step 4
 To set it up automatically on each `npm install`, you can create file `setup-hooks.sh`:
 
 ```
@@ -79,12 +92,18 @@ fi;
 and add to "scripts" in package.json this line:
 `"postinstall": "bash ./setup-hooks.sh",`
 
-##### Step 6
+##### Step 5
 We're using https://semaphoreci.com for building and deploying our github branches. If you do it as well, you can add a job to build settings (https://semaphoreci.com/%your_account_name%/%your_project_name%/settings):
 
 `npm run crowdin-progress`
 
 If you do so, you will be able to merge branch only if relevant translations on crowdin are ready.
+
+Also, we're using the following "After job" on Semaphore to automate cleaning up outdated crowdin branches:
+
+```
+if [ "$BRANCH_NAME" = "master" ]; then sleep 20m && node ./node_modules/crowdin-helper/crowdin-helper.js purge ; fi
+```
 
 ## Usage
 Here we describe our current process.
@@ -105,6 +124,8 @@ Here we describe our current process.
 **Please note:** Before downloading crowdin branch (as described in step 3) crowdin-helper will check if you have the last commit from the source file (e.g. `src/i18n/en.json`) from the master in your current branch. If not, you'll be asked to merge master branch into your own, then perform uploading sources to crowdin (as described in the step 1 or call `./node_modules/crowdin-helper/crowdin-helper.js up` and then try to download translations again). If you want to skip this check, you can simply call `./node_modules/crowdin-helper/crowdin-helper.js down --force`.
 
 **Please note:** To be on a safe side, translation sources will be uploaded to crowdin automatically if you call translations downloading.
+
+We're using also "pre-translate" API call to trigger auto translation for new string with "Perfect match" in Translation Memory. This is useful, because some developer can rename certain translation key, but the translation remains the same. You can swithc it off in `crowdin-helper.json` configuration file: `"disableAutoTranslation": true`
 
 ## Removing unnecessary crowdin branches:
 From time to time one of team leads calls `./node_modules/.bin/crowdin-helper purge` that removes branches which meet following criterias:
