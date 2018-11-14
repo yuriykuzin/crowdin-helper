@@ -32,7 +32,7 @@
     "unzipper": "0.8.13"
   },
   "devDependencies": {
-    "jest": "22.4.3",
+    "jest": "23.6.0",
     "jest-fetch-mock": "1.5.0"
   }
 }
