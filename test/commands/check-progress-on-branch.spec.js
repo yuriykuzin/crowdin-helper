@@ -42,6 +42,7 @@ describe('checkProgressOnBranch', async () => {
     };
 
     mockedChildProcess = require('child_process');
+    require('../../lib/utilities/config-manager').init();
     consoleData = '';
   });
 
@@ -53,6 +54,7 @@ describe('checkProgressOnBranch', async () => {
 
   test('should say "no new phrases" if phrases === 0', async () => {
     mockedChildProcess.__setResponse('git rev-parse --abbrev-ref HEAD', 'feature/my-feature-branch');
+    require('../../lib/utilities/config-manager').init();
 
     const checkProgressOnBranch = require('../../lib/commands/check-progress-on-branch');
     expect(consoleData.indexOf('Working on git branch: feature/my-feature-branch') !== -1).toBeTruthy();

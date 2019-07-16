@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-//   node crowdin-helper [command]
+//   node crowdin-helper [options] [command]
 
 //   COMMANDS
 //   up              - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
@@ -12,7 +12,12 @@
 //   pre-push        - Checks if source file differs from master and if yes, uploads source file to crowdin
 //   purge           - Delete all unused branches from crowdin (each branch without relevant GIT branch)
 //   auto-translate  - Trigger auto-translation (from TM, with perfect-match)
+//
+//   OPTIONS
+//   -c, --config    - Path to config file
 
+const matches = process.argv.join(' ').match(/((?:\-c|\-\-config)[\s=]+)(\S*)/i);
+require('./lib/utilities/config-manager').init(matches && matches[2]);
 
 const downloadTranslations = require('./lib/commands/download-translations');
 const uploadSources = require('./lib/commands/upload-sources');
@@ -50,7 +55,7 @@ switch(process.argv[2]) {
     console.log(`
       Crowdin Helper
 
-      node crowdin-helper [command]
+      node crowdin-helper [options] [command]
 
       COMMANDS
       up              - Uploads source file to the current branch in crowdin (evaluated from GIT branch)
@@ -62,5 +67,8 @@ switch(process.argv[2]) {
       pre-push        - Checks if source file differs from master and if yes, uploads source file to crowdin
       purge           - Delete all unused branches from crowdin (each branch without relevant GIT branch)
       auto-translate  - Trigger auto-translation (from TM, with perfect-match)
+
+      OPTIONS
+      -c, --config    - Path to config file
     `);
 }

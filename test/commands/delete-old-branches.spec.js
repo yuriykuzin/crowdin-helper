@@ -42,6 +42,7 @@ describe('deleteOldBranches', async () => {
     };
 
     mockedChildProcess = require('child_process');
+    require('../../lib/utilities/config-manager').init();
     consoleData = '';
   });
 
