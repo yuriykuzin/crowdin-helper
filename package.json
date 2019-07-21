@@ -1,10 +1,10 @@
 {
   "name": "crowdin-helper",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "engines": {
     "node": ">=7.6"
   },
-  "description": "Unofficial addition to Crowdin CLI to automate continuous integration workflow",
+  "description": "Unofficial Crowdin client to automate continuous integration workflow",
   "bin": {
     "crowdin-helper": "./crowdin-helper.js"
   },
