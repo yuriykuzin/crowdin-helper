@@ -1,6 +1,7 @@
 const fetch = require('jest-fetch-mock');
 jest.setMock('node-fetch', fetch);
 jest.mock('fs');
+require('../../lib/utilities/config-manager').init();
 
 const CrowdinApi = require('../../lib/utilities/crowdin-api');
 

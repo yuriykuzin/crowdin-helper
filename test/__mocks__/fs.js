@@ -30,6 +30,10 @@ function readFileSync(fileName, encoding) {
     return mockConfigFileContent;
   }
 
+  if (fileName === '/path/to/crowdin-helper.json' && encoding === 'utf8') {
+    return mockConfigFileContent.replace('my-project-name', 'my-another-project-name');
+  }
+
   return null;
 }
 
