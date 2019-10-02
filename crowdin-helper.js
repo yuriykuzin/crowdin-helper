@@ -15,9 +15,10 @@
 //
 //   OPTIONS
 //   -c, --config    - Path to config file
+//   -b, --branch    - Set branch name to work on (instead of taking current one from git)
 
-const matches = process.argv.join(' ').match(/((?:\-c|\-\-config)[\s=]+)(\S*)/i);
-require('./lib/utilities/config-manager').init(matches && matches[2]);
+const configOptionMatches = process.argv.join(' ').match(/((?:\-c|\-\-config)[\s=]+)(\S*)/i);
+require('./lib/utilities/config-manager').init(configOptionMatches && configOptionMatches[2]);
 
 const downloadTranslations = require('./lib/commands/download-translations');
 const uploadSources = require('./lib/commands/upload-sources');
@@ -70,5 +71,6 @@ switch(process.argv[2]) {
 
       OPTIONS
       -c, --config    - Path to config file
+      -b, --branch    - Set branch name to work on (instead of taking current one from git)
     `);
 }
