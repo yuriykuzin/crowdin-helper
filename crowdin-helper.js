@@ -36,7 +36,12 @@ switch(process.argv[2]) {
     break;
 
   case 'down':
-    const shouldIgnoreUnmergedMaster = process.argv[3] === '--force';
+    const shouldIgnoreUnmergedMaster = process.argv.includes('--force');
+
+    if (shouldIgnoreUnmergedMaster) {
+      console.log('Force mode: skip checking unmerged master');
+    }
+
     downloadTranslations(shouldIgnoreUnmergedMaster);
     break;
 
