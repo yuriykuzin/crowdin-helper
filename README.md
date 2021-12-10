@@ -36,7 +36,6 @@ Add crowdin-helper.json to the root of your project. Here is an example:
   "translation": "/src/i18n/%two_letters_code%.json",
   "languageToCheck": "nl",
   "languagesToAutoTranslate": ["nl", "fi"],
-  "daysSinceLastUpdatedToDeleteBranchSafely": 3,
   "minutesSinceLastMasterMergeToPurgeSafely": 20,
   "disableAutoTranslation": false
 }
@@ -133,8 +132,6 @@ We're using also "pre-translate" API call to trigger auto translation for new st
 From time to time one of team leads calls `./node_modules/.bin/crowdin-helper purge` that removes branches which meet following criterias:
 
 - crowdin branch do not have relevant branch on github (in our process we delete a branch on github after merging PR into master),
-
-- at least 3 days passed after last updating branch(is configured in "daysSinceLastUpdatedToDeleteBranchSafely" of crowdin-helper.json),
 
 - at least 20 minutes passed since last merge to github master (is configured in "minutesSinceLastMasterMergeToPurgeSafely" of crowdin-helper.json) - so we can be sure that crowdin performed all syncronization with master branch and took necessary translations from feature crowdin-branch.
 

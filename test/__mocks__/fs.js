@@ -9,7 +9,6 @@ const MOCK_CONFIG_FILE_CONTENT_DEFAULT = `
     "translation": "/sample-translation-folder/%two_letters_code%.json",
     "languageToCheck": "nl",
     "languagesToAutoTranslate": ["nl", "fi"],
-    "daysSinceLastUpdatedToDeleteBranchSafely": 3,
     "minutesSinceLastMasterMergeToPurgeSafely": 20,
     "disableAutoTranslation": false
   }
