@@ -33,8 +33,8 @@ describe('config-manager', () => {
     const configManager = require('../../lib/utilities/config-manager');
     configManager.init();
 
-    expect(configManager.get('projectIdentifier')).toBe('my-project-name');
-    expect(configManager.get('projectKey')).toBe('my-project-api-key');
+    expect(configManager.get('projectId')).toBe('my-project-api-key');
+    expect(configManager.get('token')).toBe('my-personal-access-token');
     expect(configManager.get('sourceFilesPattern')).toBe('**/en.json');
     expect(configManager.get('translationPattern')).toBe(
       '/sample-translation-folder/%two_letters_code%.json',
@@ -61,12 +61,12 @@ describe('config-manager', () => {
       configManager.init();
     } catch (e) {}
 
-    expect(configManager.get('projectIdentifier')).toBeUndefined();
+    expect(configManager.get('projectId')).toBeUndefined();
     expect(processExitMock).toHaveBeenCalledWith(1);
   });
 
   test('should report of all missing required props', () => {
-    const requiredProps = ['projectIdentifier', 'projectKey', 'source', 'translation'];
+    const requiredProps = ['token', 'projectId', 'source', 'translation'];
 
     require('fs').__setMockConfigFileContent(JSON.stringify({}));
     let config;
