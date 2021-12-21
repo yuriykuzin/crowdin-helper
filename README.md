@@ -9,6 +9,10 @@ This is a current version, which we experiment with to use in our team's workflo
 #### Disclaimer:
 Crowdin and the Crowdin API are the property of Crowdin, LLC.
 
+## To do:
+
+- [ ] Restore/fix temporary removed specs
+
 ## Changes in 2.0.0
 
 - Migrated to Crowdin API v2

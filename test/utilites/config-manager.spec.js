@@ -33,7 +33,7 @@ describe('config-manager', () => {
     const configManager = require('../../lib/utilities/config-manager');
     configManager.init();
 
-    expect(configManager.get('projectId')).toBe('my-project-api-key');
+    expect(configManager.get('projectId')).toBe('my-project-id');
     expect(configManager.get('token')).toBe('my-personal-access-token');
     expect(configManager.get('sourceFilesPattern')).toBe('**/en.json');
     expect(configManager.get('translationPattern')).toBe(
@@ -49,7 +49,7 @@ describe('config-manager', () => {
     const configManager = require('../../lib/utilities/config-manager');
     configManager.init('/path/to/crowdin-helper.json');
 
-    expect(configManager.get('projectIdentifier')).toBe('my-another-project-name');
+    expect(configManager.get('projectId')).toBe('my-another-project-id');
   });
 
   test('should exit if not get a valid JSON', () => {
@@ -69,7 +69,6 @@ describe('config-manager', () => {
     const requiredProps = ['token', 'projectId', 'source', 'translation'];
 
     require('fs').__setMockConfigFileContent(JSON.stringify({}));
-    let config;
 
     try {
       require('../../lib/utilities/config-manager').init();

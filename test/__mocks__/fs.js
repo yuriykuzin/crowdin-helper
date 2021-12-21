@@ -1,4 +1,4 @@
-const { Readable, Writable } = require('stream');
+const { Readable } = require('stream');
 const fs = jest.genMockFromModule('fs');
 
 const MOCK_CONFIG_FILE_CONTENT_DEFAULT = `
@@ -30,7 +30,7 @@ function readFileSync(fileName, encoding) {
   }
 
   if (fileName === '/path/to/crowdin-helper.json' && encoding === 'utf8') {
-    return mockConfigFileContent.replace('my-project-name', 'my-another-project-name');
+    return mockConfigFileContent.replace('my-project-id', 'my-another-project-id');
   }
 
   return null;
