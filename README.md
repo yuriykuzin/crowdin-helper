@@ -4,17 +4,24 @@
 
 Unofficial Crowdin client to automate continuous integration workflow.
 
-(Since version 1.0.0-rc.1 is not dependent on the official Crowdin CLI)
-
 This is a current version, which we experiment with to use in our team's workflow. For now some things are harcoded inside, accordingly to our own needs. You're welcome to use it as a source of inspiration, fork it and modify code to make it usable in your projects. We would appreciate any kind of feedback, suggestions, pull requests.
 
 #### Disclaimer:
 Crowdin and the Crowdin API are the property of Crowdin, LLC.
 
+## To do:
+
+- [ ] Restore/fix temporary removed specs
+
+## Changes in 2.0.0
+
+- Migrated to Crowdin API v2
+- Removed `daysSinceLastUpdatedToDeleteBranchSafely` config variable
+
 ## Changes in 1.0.0-rc.1
 
 - It is not dependent on Crowdin CLI anymore
-- `projectKey` and `projectIdentifier` have to be configured in `crowdin-helper.json` in the root of your project
+- `projectId` and `token` have to be configured in `crowdin-helper.json` in the root of your project
 - Automatic translation (in case of "perfect match" with Translation Memory) is triggered after each file upload and progress checking on master branch (you can also disable this if you want)
 
 ## Installation from npm
@@ -30,19 +37,26 @@ Add crowdin-helper.json to the root of your project. Here is an example:
 
 ```
 {
-  "projectIdentifier": "my-project-name",
-  "projectKey": "my-project-api-key",
+  "projectId": "my-project-id",
+  "token": "my-personal-access-token",
   "source": "/src/i18n/en.json",
   "translation": "/src/i18n/%two_letters_code%.json",
   "languageToCheck": "nl",
   "languagesToAutoTranslate": ["nl", "fi"],
-  "daysSinceLastUpdatedToDeleteBranchSafely": 3,
   "minutesSinceLastMasterMergeToPurgeSafely": 20,
-  "disableAutoTranslation": false
+  "disableAutoTranslation": false,
+  "masterBranchName": "main"
 }
 ```
 
-Also, you can use patterns in "source" property:
+Some comments on these properties:
+
+- `projectId` - can be seen on a project's home page,
+- `token` - from https://crowdin.com/settings#api-key
+- `minutesSinceLastMasterMergeToPurgeSafely` - default is 20
+- `disableAutoTranslation` - default is false
+- `masterBranchName` - default is "master"
+- `source` - you can use patterns:
 
 ```
   "source": "/**/en.json"
@@ -133,8 +147,6 @@ We're using also "pre-translate" API call to trigger auto translation for new st
 From time to time one of team leads calls `./node_modules/.bin/crowdin-helper purge` that removes branches which meet following criterias:
 
 - crowdin branch do not have relevant branch on github (in our process we delete a branch on github after merging PR into master),
-
-- at least 3 days passed after last updating branch(is configured in "daysSinceLastUpdatedToDeleteBranchSafely" of crowdin-helper.json),
 
 - at least 20 minutes passed since last merge to github master (is configured in "minutesSinceLastMasterMergeToPurgeSafely" of crowdin-helper.json) - so we can be sure that crowdin performed all syncronization with master branch and took necessary translations from feature crowdin-branch.
 

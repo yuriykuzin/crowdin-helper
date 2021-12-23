@@ -1,15 +1,14 @@
-const { Readable, Writable } = require('stream');
+const { Readable } = require('stream');
 const fs = jest.genMockFromModule('fs');
 
 const MOCK_CONFIG_FILE_CONTENT_DEFAULT = `
   {
-    "projectIdentifier": "my-project-name",
-    "projectKey": "my-project-api-key",
+    "projectId": "my-project-id",
+    "token": "my-personal-access-token",
     "source": "/**/en.json",
     "translation": "/sample-translation-folder/%two_letters_code%.json",
     "languageToCheck": "nl",
     "languagesToAutoTranslate": ["nl", "fi"],
-    "daysSinceLastUpdatedToDeleteBranchSafely": 3,
     "minutesSinceLastMasterMergeToPurgeSafely": 20,
     "disableAutoTranslation": false
   }
@@ -31,17 +30,17 @@ function readFileSync(fileName, encoding) {
   }
 
   if (fileName === '/path/to/crowdin-helper.json' && encoding === 'utf8') {
-    return mockConfigFileContent.replace('my-project-name', 'my-another-project-name');
+    return mockConfigFileContent.replace('my-project-id', 'my-another-project-id');
   }
 
   return null;
 }
 
 function createReadStream(filePath) {
-  const readable = new Readable;
+  const readable = new Readable();
 
   if (filePath === 'test/sample-source-file/en.json') {
-    readable.push(JSON.stringify({ "TRANSLATION_KEY": "Source in English" }));
+    readable.push(JSON.stringify({ TRANSLATION_KEY: 'Source in English' }));
     readable.push(null);
   }
 
@@ -51,8 +50,8 @@ function createReadStream(filePath) {
 function createWriteStream(filePath) {
   return {
     on: (name, cb) => cb(),
-    write: () => null
-  }
+    write: () => null,
+  };
 }
 
 fs.readFileSync = readFileSync;
