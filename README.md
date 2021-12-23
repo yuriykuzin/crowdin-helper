@@ -37,18 +37,26 @@ Add crowdin-helper.json to the root of your project. Here is an example:
 
 ```
 {
-  "projectId": "my-project-id",  // can be seen on a project's home page
-  "token": "my-personal-access-token",  // from https://crowdin.com/settings#api-key
+  "projectId": "my-project-id",
+  "token": "my-personal-access-token",
   "source": "/src/i18n/en.json",
   "translation": "/src/i18n/%two_letters_code%.json",
   "languageToCheck": "nl",
   "languagesToAutoTranslate": ["nl", "fi"],
   "minutesSinceLastMasterMergeToPurgeSafely": 20,
-  "disableAutoTranslation": false
+  "disableAutoTranslation": false,
+  "masterBranchName": "main"
 }
 ```
 
-Also, you can use patterns in "source" property:
+Some comments on these properties:
+
+- `projectId` - can be seen on a project's home page,
+- `token` - from https://crowdin.com/settings#api-key
+- `minutesSinceLastMasterMergeToPurgeSafely` - default is 20
+- `disableAutoTranslation` - default is false
+- `masterBranchName` - default is "master"
+- `source` - you can use patterns:
 
 ```
   "source": "/**/en.json"
