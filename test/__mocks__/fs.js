@@ -7,7 +7,7 @@ const MOCK_CONFIG_FILE_CONTENT_DEFAULT = `
     "token": "my-personal-access-token",
     "source": "/**/en.json",
     "translation": "/sample-translation-folder/%two_letters_code%.json",
-    "languageToCheck": "nl",
+    "languagesToCheck": ["nl", "de"],
     "languagesToAutoTranslate": ["nl", "fi"],
     "minutesSinceLastMasterMergeToPurgeSafely": 20,
     "disableAutoTranslation": false
