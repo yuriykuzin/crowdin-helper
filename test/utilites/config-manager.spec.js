@@ -39,7 +39,7 @@ describe('config-manager', () => {
     expect(configManager.get('translationPattern')).toBe(
       '/sample-translation-folder/%two_letters_code%.json',
     );
-    expect(configManager.get('languageToCheck')).toBe('nl');
+    expect(configManager.get('languagesToCheck')).toStrictEqual(['nl', 'de']);
     expect(configManager.get('languagesToAutoTranslate')).toEqual(['nl', 'fi']);
     expect(configManager.get('minutesSinceLastMasterMergeToPurgeSafely')).toBe(20);
     expect(configManager.get('disableAutoTranslation')).toBeFalsy();

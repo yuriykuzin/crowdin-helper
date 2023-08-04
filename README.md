@@ -13,6 +13,11 @@ Crowdin and the Crowdin API are the property of Crowdin, LLC.
 
 - [ ] Restore/fix temporary removed specs
 
+## Changes in 3.0.0
+
+- Added the ability to check progress for multiple required languages
+- Breaking changes: remade config variable from `{"languageToCheck": string}` to `{"languagesToCheck": sting[]}`
+
 ## Changes in 2.0.0
 
 - Migrated to Crowdin API v2
@@ -41,7 +46,7 @@ Add crowdin-helper.json to the root of your project. Here is an example:
   "token": "my-personal-access-token",
   "source": "/src/i18n/en.json",
   "translation": "/src/i18n/%two_letters_code%.json",
-  "languageToCheck": "nl",
+  "languagesToCheck": ["nl"],
   "languagesToAutoTranslate": ["nl", "fi"],
   "minutesSinceLastMasterMergeToPurgeSafely": 20,
   "disableAutoTranslation": false,
